@@ -1,2 +1,2 @@
 It is a simple readme.
-This is a &.
+This is a simple.
