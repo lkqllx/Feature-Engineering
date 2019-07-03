@@ -11,34 +11,18 @@ from keras.layers.core import Flatten, Dense
 from keras.layers.convolutional import Conv3D
 from keras.layers.convolutional_recurrent import ConvLSTM2D
 from keras.layers.normalization import BatchNormalization
+from keras.layers.recurrent import LSTM
 
 
 def create_network():
     seq = Sequential()
-    seq.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
-                       input_shape=(None, 40, 1, 1),
-                       padding='same', return_sequences=True))
-    seq.add(BatchNormalization())
 
-    seq.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
-                       padding='same', return_sequences=True))
-    seq.add(BatchNormalization())
-
-    seq.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
-                       padding='same', return_sequences=True))
-    seq.add(BatchNormalization())
-
-    seq.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
-                       padding='same', return_sequences=True))
-    seq.add(BatchNormalization())
-
+    seq.add(LSTM(128, input_shape=(5, 55), return_sequences=True))
+    seq.add(LSTM(128, dropout=0.2, recurrent_dropout=0.2, return_sequences=True))
     seq.add(Flatten())
-
-    seq.add(Dense([256], activation='relu'))
-
-    seq.add(Dense([3], activation='softmax'))
-
-    seq.compile(loss='categorical_crossentropy', optimizer='Adagrad')
+    seq.add(Dense(128, activation='relu'))
+    seq.add(Dense(3, activation='softmax'))
+    seq.compile(loss='categorical_crossentropy', optimizer='adadelta', metrics=['categorical_accuracy'])
     return seq
 
 
@@ -59,14 +43,15 @@ def preprocess(df: pd.DataFrame, threshold: float=0.0001) -> (pd.DataFrame, pd.D
     "Create a new feature - LOB imbalance"
     df['imbalance'] = df['SP1'] * df['SV1'] - df['BV1'] * df['BP1']
     df['imbalance'] = (df['imbalance'] - df['imbalance'].mean()) / (df['imbalance'].max() - df['imbalance'].min())
-
     return df, label
-
-
 
 
 if __name__ == '__main__':
     df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
     processed_df, label = preprocess(df, 0.0001)
-    print(df.head())
-    print()
+    a = processed_df.values[317:, 8:]
+    cnn = create_network()
+
+    cnn.fit(processed_df.values[317:, 8:].reshape((-1, 5, 55)), np_utils.to_categorical(label['Label_1'].values[317::5], num_classes=3),
+            epochs=50, validation_split=0.05)
+    cnn.model.summary()
