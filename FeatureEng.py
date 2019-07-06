@@ -15,6 +15,8 @@ from keras.layers.recurrent import LSTM
 import os
 import h5py
 import datetime as dt
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
 
 def concat_data(path='data/'):
     files = os.listdir(path)
@@ -67,13 +69,15 @@ class Preprocess:
         df['imbalance'] = df['SP1'] * df['SV1'] - df['BV1'] * df['BP1']
         df['imbalance'] = (df['imbalance'] - df['imbalance'].mean()) / (df['imbalance'].max() - df['imbalance'].min())
 
+
+        y_reg = df.iloc[:, 2:7]
         df = df.iloc[:, 8:]
         for idx in range(0, 10 - 1):
             if (df.size - 55 * idx) % (time_step * 55) == 0:
                 possible_reshape_row = idx
                 break
 
-        return df[possible_reshape_row:], label[possible_reshape_row::time_step]
+        return df[possible_reshape_row:], label[possible_reshape_row::time_step], y_reg[possible_reshape_row::time_step]
 
 class NeuralNet(Preprocess):
     def __init__(self, df, time_step = 5):
@@ -91,7 +95,7 @@ class NeuralNet(Preprocess):
         return seq
 
     def run(self):
-        self.processed_df, self.label = self.preprocess(self.df, 0.0001)
+        self.processed_df, self.label, _ = self.preprocess(self.df, 0.0001)
         nn = self.create_network()
         nn.fit(self.processed_df.values.reshape((-1, self.time_step, 55)),
                 np_utils.to_categorical(self.label['Label_1'], num_classes=3),
@@ -112,7 +116,7 @@ class Regressor(Preprocess):
         self.curr_start = df.date[0]
         self.date = df.date.reset_index(drop=True)
         self.curr_pointer = 0 # pointed to the index of current date
-        self.preprocess_df, self.label = self.preprocess(df=df, time_step=1)
+        self.preprocess_df, _, self.label = self.preprocess(df=df, time_step=1)
 
 
     def fetch_data(self):
@@ -132,18 +136,19 @@ class Regressor(Preprocess):
                 train_end_idx = train_idx - 1
                 test_start_idx = train_idx
                 break
+
         for test_idx in range(test_start_idx, self.date.shape[0]):
             if (test_end - dt.datetime.strptime(self.date[test_idx], '%Y-%m-%d')).days <= -1:
                 test_end_idx = test_idx - 1
                 break
 
-        print(f'Train start  - {self.date[train_start_idx]}')
-        print(f'Train end  - {self.date[train_end_idx]}')
-        print(f'Test start  - {self.date[test_start_idx]}')
-        print(f'Test end  - {self.date[test_end_idx]}')
+        # print(f'Train start  - {self.date[train_start_idx]}')
+        # print(f'Train end  - {self.date[train_end_idx]}')
+        # print(f'Test start  - {self.date[test_start_idx]}')
+        # print(f'Test end  - {self.date[test_end_idx]}')
 
-        return (self.preprocess_df[train_start_idx:train_end_idx], self.label[train_start_idx:train_end_idx]),\
-               (self.preprocess_df[test_start_idx:test_end_idx], self.label[test_start_idx:test_end_idx])
+        return self.preprocess_df[train_start_idx:train_end_idx], self.label[train_start_idx:train_end_idx],\
+               self.preprocess_df[test_start_idx:test_end_idx], self.label[test_start_idx:test_end_idx]
 
 if __name__ == '__main__':
     # comp_BM(file='data/step1_1101.csv')
@@ -164,9 +169,14 @@ if __name__ == '__main__':
     df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
     reg = Regressor(df=df)
     for _ in range(50):
-        reg.fetch_data()
-
-
+        try:
+            train_x, train_y, test_x, test_y = reg.fetch_data()
+            regr = LinearRegression().fit(train_x, train_y)
+            y_pred = regr.predict(test_x)
+            # print(f'Mean error is {mean_squared_error(test_y, y_pred)}')
+            print(f'R-square is {r2_score(test_y, y_pred)}')
+        except:
+            pass
 
 
 
