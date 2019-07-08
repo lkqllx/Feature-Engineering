@@ -115,8 +115,6 @@ def fetch_testing(df, testing_start, duration=1):
         print('Specific duration is not contained in the dataframe!')
         return False
 
-
-
 class Preprocess:
     def preprocess(self, df: pd.DataFrame, threshold: float = 0.0001, time_step=5, num_feature=8, normalize=True) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         label = pd.DataFrame(index=df.index)
