@@ -65,15 +65,58 @@ def comp_BM(file='data/step1_2492.csv'):
 
 def split_dataset(path='data/'):
     files = os.listdir(path)
+    test_file = 'step1_0050.csv'
+    ticker = test_file.split('.')[0].split('_')[1]
+    if not os._exists(f'data/test/{ticker}'):
+        os.mkdir(f'data/test/{ticker}')
+
+    test_df = pd.read_csv('data/'+test_file, index_col=0).dropna()
+    test_df['date_str'] = test_df['date'].values
+    test_df.date = test_df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
+
+    date_set = set(test_df['date_str'].values.tolist())
+    date_key = {date: dt.datetime.strptime(date, '%Y-%m-%d') for date in date_set}
+    date_key = sorted(date_key.items(), key=lambda x:x[1])
+
+    """Decide how many training and testing sample"""
+    sorted_date_set = [date for date, _ in date_key][:5]
+
+
+    TRAIN_DURATION = 28
+
+
+    """
+    Initialize directory and test file
+    """
+    for idx, curr_date in enumerate(sorted_date_set):
+        if idx % 1 == 0:
+            print(f'Test Done - {idx}')
+
+        training = fetch_training(test_df, training_start=curr_date, duration=TRAIN_DURATION)
+        test_date = dt.datetime.strptime(curr_date, '%Y-%m-%d') + dt.timedelta(days=TRAIN_DURATION)
+        for _ in range(100):
+            if test_date.strftime('%Y-%m-%d') in date_set:
+                break
+            else:
+                test_date += dt.timedelta(days=1)
+        testing = fetch_testing(test_df, testing_start=test_date.strftime('%Y-%m-%d'), duration=1, curr_date_set=date_set)
+        training.to_csv(f'data/training/training_{idx}.csv')
+        testing.to_csv(f'data/test/{ticker}/test_{idx}.csv')
+
+
+    """Append training data to different test period"""
     for file in files:
-        start = '2018-01-22'
-        if file.split('.')[1] == 'csv':
+        print('-'*20, f'{file}', '-'*20)
+        if file.split('.')[1] == 'csv' and file != test_file:
             df = pd.read_csv(path+file, index_col=0)
-            df['date_str'] = df['date'].values
             df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-            training = fetch_training(df, training_start='2018-01-22', duration=14)
-            testing = fetch_testing(df, testing_start='2018-01-22', duration=1)
-            df.drop('date_str', axis=1)
+            for idx, curr_date in enumerate(sorted_date_set):
+                if idx % 1 == 0:
+                    print(f'{file} Done - {idx}')
+                training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
+                prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
+                prev_training = prev_training.append(training, sort=False)
+                prev_training.to_csv(f'data/training/training_{idx}.csv')
 
 
 def fetch_training(df, training_start, duration):
@@ -91,19 +134,18 @@ def fetch_training(df, training_start, duration):
         return df.loc[(df.date < dt_training_end) & (df.date >= dt_training_start)]
 
     except:
-        print('Specific duration is not contained in the dataframe!')
+        print('Error fetch_training')
         return False
 
-def fetch_testing(df, testing_start, duration=1):
+def fetch_testing(df, testing_start, curr_date_set, duration=1):
     """
     Fetch the testing data for a fixed period but the testing start may not in the dataframe
     So we need to look for the next available start date
     :return: output - in that duration
     """
     dt_testing_start = dt.datetime.strptime(testing_start, '%Y-%m-%d')
-    date_set = set(df['date_str'].values.tolist())
     for _ in range(200):
-        if testing_start in date_set:
+        if testing_start in curr_date_set:
             dt_testing_end = dt_testing_start + dt.timedelta(days=duration)
             break
         else:
@@ -112,7 +154,7 @@ def fetch_testing(df, testing_start, duration=1):
         return df.loc[(df.date < dt_testing_end) & (df.date >= dt_testing_start)]
 
     except:
-        print('Specific duration is not contained in the dataframe!')
+        print('Error fectch_testing')
         return False
 
 class Preprocess:
@@ -250,6 +292,11 @@ if __name__ == '__main__':
     # concat_data()
 
     """
+    Splite the data
+    """
+    split_dataset()
+
+    """
     Preprocess dataframe and reshape the data fed into neural networks
     """
     # df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
@@ -261,13 +308,13 @@ if __name__ == '__main__':
     1.Preprocess dataframe regarding to different time scale
     2.Build the regression model
     """
-    df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
-    df['date_str'] = df['date'].values
-    df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-    # training = fetch_training(df, training_start='2018-01-22', duration=14)
-    testing = fetch_testing(df, testing_start='2018-01-22', duration=1)
-    df.drop('date_str', axis=1)
-    reg = Regressor(df=df)
+    # df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
+    # df['date_str'] = df['date'].values
+    # df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
+    # # training = fetch_training(df, training_start='2018-01-22', duration=14)
+    # testing = fetch_testing(df, testing_start='2018-01-22', duration=1)
+    # df.drop('date_str', axis=1)
+    # reg = Regressor(df=df)
 
 
 
