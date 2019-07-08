@@ -33,7 +33,7 @@ def concat_data(path='data/'):
         if idx % 5 == 0:
             print(f'Processing {idx}')
 
-def comp_BM(file='data/step1_2492.csv'):
+def comp_BM(file='data/step1_0050.csv'):
     try:
         curr_df = pd.read_csv(file, index_col=0)
     except:
@@ -99,9 +99,12 @@ class NeuralNet(Preprocess):
         nn = self.create_network()
         nn.fit(self.processed_df.values.reshape((-1, self.time_step, 55)),
                 np_utils.to_categorical(self.label['Label_1'], num_classes=3),
-                epochs=20, validation_split=0.05)
+                epochs=20, validation_split=0.1)
 
 class Regressor(Preprocess):
+    """
+    TODO: Handle weekend
+    """
     def __init__(self, df, train_interval=10, test_interval=1, test_period=100):
         """
         Regressor for linear regression
@@ -152,32 +155,32 @@ class Regressor(Preprocess):
                self.preprocess_df[test_start_idx:test_end_idx], self.label[test_start_idx:test_end_idx]
 
 if __name__ == '__main__':
-    # comp_BM(file='data/step1_1101.csv')
+    comp_BM(file='data/step1_0050.csv')
     # concat_data()
 
     """
     Preprocess dataframe and reshape the data fed into neural networks
     """
-    # df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
-    # nn = NeuralNet(df, time_step=5)
-    # nn.run()
+    df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
+    nn = NeuralNet(df, time_step=5)
+    nn.run()
 
 
     """
     1.Preprocess dataframe regarding to different time scale
     2.Build the regression model
     """
-    df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
-    reg = Regressor(df=df)
-    for _ in range(50):
-        try:
-            train_x, train_y, test_x, test_y = reg.fetch_data()
-            regr = LinearRegression().fit(train_x, train_y)
-            y_pred = regr.predict(test_x)
-            # print(f'Mean error is {mean_squared_error(test_y, y_pred)}')
-            print(f'R-square is {r2_score(test_y, y_pred)}')
-        except:
-            pass
+    # df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
+    # reg = Regressor(df=df)
+    # for _ in range(100):
+    #     try:
+    #         train_x, train_y, test_x, test_y = reg.fetch_data()
+    #         regr = LinearRegression().fit(train_x, train_y)
+    #         y_pred = regr.predict(test_x)
+    #         # print(f'Mean error is {mean_squared_error(test_y, y_pred)}')
+    #         print(f'R-square is {r2_score(test_y, y_pred)}')
+    #     except:
+    #         pass
 
 
 
