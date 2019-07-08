@@ -15,6 +15,7 @@ from keras.layers.recurrent import LSTM
 import os
 import h5py
 import datetime as dt
+from statsmodels.api import OLS, add_constant
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 
@@ -39,7 +40,7 @@ def comp_BM(file='data/step1_2492.csv'):
     except:
         curr_df = pd.read_hdf(file)
     nn = NeuralNet(curr_df)
-    _, label = nn.preprocess(curr_df)
+    _, label, _ = nn.preprocess(curr_df)
     shifted_label = label.shift(1)
     shifted_label, label = shifted_label[1:], label[1:]
     BM = {}
@@ -49,9 +50,15 @@ def comp_BM(file='data/step1_2492.csv'):
         BM[col] = round(correct / total, 2)
     print(BM)
 
+# def split_dataset(path='data/'):
+#     files = os.listdir(path)
+#     for file in files:
+#         if file.split('.')[1] == 'csv':
+#             curr_df =
+
 
 class Preprocess:
-    def preprocess(self, df: pd.DataFrame, threshold: float = 0.0001, time_step=5) -> (pd.DataFrame, pd.DataFrame):
+    def preprocess(self, df: pd.DataFrame, threshold: float = 0.0001, time_step=5, num_feature=8, normalize=True) -> (pd.DataFrame, pd.DataFrame):
         label = pd.DataFrame(index=df.index)
         for idx, name in enumerate(df.columns):
             "Creat training labels"
@@ -61,7 +68,7 @@ class Preprocess:
                 label.loc[df[name] < -threshold, 'Label_{}'.format(idx)] = 2
                 label.loc[abs(df[name]) <= threshold, 'Label_{}'.format(idx)] = 0
 
-            if int(idx) >= 8:
+            if int(idx) >= num_feature and normalize:
                 "Normalize the dataframe"
                 df.loc[:, name] = (df[name] - df[name].mean()) / (df[name].max() - df[name].min())
 
@@ -71,9 +78,9 @@ class Preprocess:
 
 
         y_reg = df.iloc[:, 2:7]
-        df = df.iloc[:, 8:]
+        df = df.iloc[:, num_feature:]
         for idx in range(0, 10 - 1):
-            if (df.size - 55 * idx) % (time_step * 55) == 0:
+            if (df.size - (df.shape[1]) * idx) % (time_step * df.shape[1]) == 0:
                 possible_reshape_row = idx
                 break
 
@@ -96,19 +103,24 @@ class NeuralNet(Preprocess):
 
     def run(self):
         self.processed_df, self.label, _ = self.preprocess(self.df, 0.0001)
-        nn = self.create_network()
-        nn.fit(self.processed_df.values.reshape((-1, self.time_step, 55)),
+        self.nn = self.create_network()
+        self.nn.fit(self.processed_df.values.reshape((-1, self.time_step, 55)),
                 np_utils.to_categorical(self.label['Label_1'], num_classes=3),
-                epochs=20, validation_split=0.05)
+                epochs=20, validation_split=0.05, shuffle=False)
+
+    def predict(self):
+        self.nn.predict()
+
 
 class Regressor(Preprocess):
-    def __init__(self, df, train_interval=10, test_interval=1, test_period=100):
+    def __init__(self, df, train_interval=14, test_interval=1, test_period=100, num_feature=16):
         """
         Regressor for linear regression
         :param df: input data
         :param train_interval: length of training period
         :param test_period: how many days to be tested
         """
+        super().__init__()
         self.df = df
         self.train_interval = train_interval
         self.test_period = test_period
@@ -116,13 +128,12 @@ class Regressor(Preprocess):
         self.curr_start = df.date[0]
         self.date = df.date.reset_index(drop=True)
         self.curr_pointer = 0 # pointed to the index of current date
-        self.preprocess_df, _, self.label = self.preprocess(df=df, time_step=1)
+        self.preprocess_df, _, self.label = self.preprocess(df=df, time_step=1, num_feature=num_feature, normalize=False)
 
 
     def fetch_data(self):
         train_start = dt.datetime.strptime(self.curr_start, '%Y-%m-%d')
         train_end = train_start + dt.timedelta(days=self.train_interval)
-        test_end = train_end + dt.timedelta(days=self.test_interval)
 
         train_start_idx = self.curr_pointer
         updated = False
@@ -135,6 +146,7 @@ class Regressor(Preprocess):
             if (train_end - dt.datetime.strptime(self.date[train_idx], '%Y-%m-%d')).days <= -1:
                 train_end_idx = train_idx - 1
                 test_start_idx = train_idx
+                test_end = dt.datetime.strptime(self.date[test_start_idx], '%Y-%m-%d') # only one day test
                 break
 
         for test_idx in range(test_start_idx, self.date.shape[0]):
@@ -145,7 +157,7 @@ class Regressor(Preprocess):
         # print(f'Train start  - {self.date[train_start_idx]}')
         # print(f'Train end  - {self.date[train_end_idx]}')
         # print(f'Test start  - {self.date[test_start_idx]}')
-        # print(f'Test end  - {self.date[test_end_idx]}')
+        # print(f'Test end  - {self.date[test_end_idx+1]}')
 
         return self.preprocess_df[train_start_idx:train_end_idx], self.label[train_start_idx:train_end_idx],\
                self.preprocess_df[test_start_idx:test_end_idx], self.label[test_start_idx:test_end_idx]
@@ -158,7 +170,7 @@ if __name__ == '__main__':
     Preprocess dataframe and reshape the data fed into neural networks
     """
     # df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
-    # nn = NeuralNet(df, time_step=5)
+    # nn = NeuralNet(df, time_step=30)
     # nn.run()
 
 
@@ -168,13 +180,17 @@ if __name__ == '__main__':
     """
     df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
     reg = Regressor(df=df)
+    preprocess_df = add_constant(reg.preprocess_df)
+    regr = OLS(reg.label['Y_M_1'], preprocess_df).fit()
+    print(regr.summary())
     for _ in range(50):
         try:
             train_x, train_y, test_x, test_y = reg.fetch_data()
-            regr = LinearRegression().fit(train_x, train_y)
-            y_pred = regr.predict(test_x)
-            # print(f'Mean error is {mean_squared_error(test_y, y_pred)}')
-            print(f'R-square is {r2_score(test_y, y_pred)}')
+            regr = OLS(train_y['Y_M_1'], train_x).fit()
+            print(regr.summary())
+            # y_pred = regr.predict(test_x)
+            # # print(f'Mean error is {mean_squared_error(test_y, y_pred)}')
+            # print(f'R-square is {r2_score(test_y, y_pred)}')
         except:
             pass
 
