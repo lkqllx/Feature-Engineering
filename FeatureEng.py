@@ -18,6 +18,9 @@ import datetime as dt
 from statsmodels.api import OLS, add_constant
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
+import multiprocessing as mp
+
+TRAIN_DURATION = 28
 
 
 def parse_date(date):
@@ -63,8 +66,9 @@ def comp_BM(file='data/step1_2492.csv'):
         BM[col] = round(correct / total, 2)
     print(BM)
 
-def split_dataset(path='data/'):
+def split_dataset(path = 'data/'):
     files = os.listdir(path)
+    files = [file for file in files if file[-3:] == 'csv']
     test_file = 'step1_0050.csv'
     ticker = test_file.split('.')[0].split('_')[1]
     if not os.path.exists(f'data/test/{ticker}'):
@@ -79,11 +83,8 @@ def split_dataset(path='data/'):
     date_key = sorted(date_key.items(), key=lambda x:x[1])
 
     """Decide how many training and testing sample"""
+    global sorted_date_set
     sorted_date_set = [date for date, _ in date_key][3:33]
-    
-
-
-    TRAIN_DURATION = 28
 
 
     """
@@ -106,23 +107,50 @@ def split_dataset(path='data/'):
 
 
     """Append training data to different test period"""
-    for count, file in enumerate(files[11:]):
-        count += 11
-        print('-'*20, f'{file} - Count {count}', '-'*20)
-        try:
-            if file.split('.')[1] == 'csv' and file != test_file:
-                df = pd.read_csv(path+file, index_col=0)
-                df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-                for idx, curr_date in enumerate(sorted_date_set):
-                    if idx % 10 == 0:
-                        print(f'{file} Done - {idx}')
-                    training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
-                    prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
-                    prev_training = prev_training.append(training, sort=False)
-                    prev_training.to_csv(f'data/training/training_{idx}.csv')
-        except Exception as e:
-            print(f'{e} in {file}')
-            continue
+    # for count, file in enumerate(files[11:]):
+    #     count += 11
+    #     print('-'*20, f'{file} - Count {count}', '-'*20)
+    #     try:
+    #         if file.split('.')[1] == 'csv' and file != test_file:
+    #             df = pd.read_csv(path+file, index_col=0)
+    #             df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
+    #             for idx, curr_date in enumerate(sorted_date_set):
+    #                 if idx % 10 == 0:
+    #                     print(f'{file} Done - {idx}')
+    #                 training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
+    #                 prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
+    #                 prev_training = prev_training.append(training, sort=False)
+    #                 prev_training.to_csv(f'data/training/training_{idx}.csv')
+    #     except Exception as e:
+    #         print(f'{e} in {file}')
+    #         continue
+
+    """multi-processing the concat function"""
+    print(mp.cpu_count())
+    pool = mp.Pool(mp.cpu_count())
+    pool.map(concat_training, files)
+
+def concat_training(file):
+    path = 'data/'
+    test_file = 'step1_0050.csv'
+
+    # for count, file in enumerate(files[11:]):
+    #     count += 11
+    print('-'*20, f'{file}', '-'*20)
+    try:
+        if file.split('.')[1] == 'csv' and file != test_file:
+            df = pd.read_csv(path+file, index_col=0)
+            df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
+            for idx, curr_date in enumerate(sorted_date_set):
+                if idx % 10 == 0:
+                    print(f'{file} Done - {idx}')
+                training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
+                prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
+                prev_training = prev_training.append(training, sort=False)
+                prev_training.to_csv(f'data/training/training_{idx}.csv')
+    except Exception as e:
+        print(f'{e} in {file}')
+
 
 
 def fetch_training(df, training_start, duration):
