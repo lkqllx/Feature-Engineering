@@ -132,7 +132,7 @@ def split_dataset(path = 'data/'):
     """multi-processing the concat function"""
     print(mp.cpu_count())
     pool = mp.Pool(mp.cpu_count())
-    pool.map(concat_training, files)
+    pool.map(concat_training, files[24:])
 
 def concat_training(file):
     path = 'data/'
