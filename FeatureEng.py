@@ -20,10 +20,12 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 import multiprocessing as mp
 import csv
+import keras
+TRAIN_DURATION = 252
 
-TRAIN_DURATION = 28
-
-
+config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 8} )
+sess = tf.Session(config=config)
+keras.backend.set_session(sess)
 
 
 
@@ -95,45 +97,45 @@ def split_dataset(path = 'data/'):
     """
     Initialize directory and test file
     """
-    # for idx, curr_date in enumerate(sorted_date_set):
-    #     if idx % 1 == 0:
-    #         print(f'Test Done - {idx}')
-    #
-    #     training = fetch_training(test_df, training_start=curr_date, duration=TRAIN_DURATION)
-    #     test_date = dt.datetime.strptime(curr_date, '%Y-%m-%d') + dt.timedelta(days=TRAIN_DURATION)
-    #     for _ in range(100):
-    #         if test_date.strftime('%Y-%m-%d') in date_set:
-    #             break
-    #         else:
-    #             test_date += dt.timedelta(days=1)
-    #     testing = fetch_testing(test_df, testing_start=test_date.strftime('%Y-%m-%d'), duration=1, curr_date_set=date_set)
-    #     training.to_csv(f'data/training/training_{idx}.csv')
-    #     testing.to_csv(f'data/test/{ticker}/test_{idx}.csv')
+    for idx, curr_date in enumerate(sorted_date_set):
+        if idx % 1 == 0:
+            print(f'Test Done - {idx}')
+
+        training = fetch_training(test_df, training_start=curr_date, duration=TRAIN_DURATION)
+        test_date = dt.datetime.strptime(curr_date, '%Y-%m-%d') + dt.timedelta(days=TRAIN_DURATION)
+        for _ in range(100):
+            if test_date.strftime('%Y-%m-%d') in date_set:
+                break
+            else:
+                test_date += dt.timedelta(days=1)
+        testing = fetch_testing(test_df, testing_start=test_date.strftime('%Y-%m-%d'), duration=1, curr_date_set=date_set)
+        training.to_csv(f'data/training/training_{idx}.csv')
+        testing.to_csv(f'data/test/{ticker}/test_{idx}.csv')
 
 
     """Append training data to different test period"""
-    # for count, file in enumerate(files[11:]):
-    #     count += 11
-    #     print('-'*20, f'{file} - Count {count}', '-'*20)
-    #     try:
-    #         if file.split('.')[1] == 'csv' and file != test_file:
-    #             df = pd.read_csv(path+file, index_col=0)
-    #             df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-    #             for idx, curr_date in enumerate(sorted_date_set):
-    #                 if idx % 10 == 0:
-    #                     print(f'{file} Done - {idx}')
-    #                 training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
-    #                 prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
-    #                 prev_training = prev_training.append(training, sort=False)
-    #                 prev_training.to_csv(f'data/training/training_{idx}.csv')
-    #     except Exception as e:
-    #         print(f'{e} in {file}')
-    #         continue
+    for count, file in enumerate(files[11:]):
+        count += 11
+        print('-'*20, f'{file} - Count {count}', '-'*20)
+        try:
+            if file.split('.')[1] == 'csv' and file != test_file:
+                df = pd.read_csv(path+file, index_col=0)
+                df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
+                for idx, curr_date in enumerate(sorted_date_set):
+                    if idx % 10 == 0:
+                        print(f'{file} Done - {idx}')
+                    training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
+                    prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
+                    prev_training = prev_training.append(training, sort=False)
+                    prev_training.to_csv(f'data/training/training_{idx}.csv')
+        except Exception as e:
+            print(f'{e} in {file}')
+            continue
 
     """multi-processing the concat function"""
-    print(mp.cpu_count())
-    pool = mp.Pool(mp.cpu_count())
-    pool.map(concat_training, files[24:])
+    # print(mp.cpu_count())
+    # pool = mp.Pool(mp.cpu_count())
+    # pool.map(concat_training, files[24:])
 
 def concat_training(file):
     path = 'data/'
@@ -246,20 +248,22 @@ class NeuralNet(Preprocess):
         return seq
 
     def run(self):
-        self.processed_train, self.train_label, _ = self.preprocess(self.training, 0.0000, time_step=self.time_step)
+        self.processed_train, self.train_label, _ = self.preprocess(self.training, 0.0015, time_step=self.time_step)
         self.nn = self.create_network()
         self.nn.fit(self.processed_train.values.reshape((-1, self.time_step, 55)),
                 np_utils.to_categorical(self.train_label['Label_1'], num_classes=3),
                 epochs=self.epoch, validation_split=0.05, shuffle=False)
 
     def predict(self):
-        processed_test, y, _ = self.preprocess(self.test, 0.0000)
-        _, train_acc = self.nn.evaluate(x=self.processed_train.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(self.train_label['Label_1'], num_classes=3),
-                                  steps=self.time_step)
+        processed_test, y, _ = self.preprocess(self.test, 0.0015, time_step=self.time_step)
+        # _, train_acc = self.nn.evaluate(x=self.processed_train.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(self.train_label['Label_1'], num_classes=3),
+        #                           steps=self.time_step)
         _, test_acc = self.nn.evaluate(x=processed_test.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(y['Label_1'], num_classes=3),
                                   steps=self.time_step)
-        print(f'Train acc - {train_acc}')
+        # print(f'Train acc - {train_acc}')
         print(f'Test acc - {test_acc}')
+
+        y_pred = self.nn.predict(x=processed_test.values.reshape(-1, self.time_step, 55), steps=self.time_step)
 
 class Regressor(Preprocess):
     def __init__(self, df, train_interval=14, test_interval=1, test_period=100, num_feature=16):
