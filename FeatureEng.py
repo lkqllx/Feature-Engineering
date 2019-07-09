@@ -105,13 +105,13 @@ def split_dataset(path='data/'):
 
 
     """Append training data to different test period"""
-    for file in files:
-        print('-'*20, f'{file}', '-'*20)
+    for count, file in enumerate(files):
+        print('-'*20, f'{file} - Count {count}', '-'*20)
         if file.split('.')[1] == 'csv' and file != test_file:
             df = pd.read_csv(path+file, index_col=0)
             df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
             for idx, curr_date in enumerate(sorted_date_set):
-                if idx % 1 == 0:
+                if idx % 10 == 0:
                     print(f'{file} Done - {idx}')
                 training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
                 prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
@@ -287,6 +287,8 @@ class Regressor(Preprocess):
                 # print(f'R-square is {r2_score(test_y, y_pred)}')
             except:
                 pass
+
+
 if __name__ == '__main__':
     # comp_BM(file='data/step1_1101.csv')
     # concat_data()
