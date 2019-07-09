@@ -19,6 +19,9 @@ from statsmodels.api import OLS, add_constant
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 
+TRAIN_DURATION = 28
+
+
 
 def parse_date(date):
     return dt.datetime.strptime(date, '%Y-%m-%d')
@@ -80,10 +83,10 @@ def split_dataset(path='data/'):
 
     """Decide how many training and testing sample"""
     sorted_date_set = [date for date, _ in date_key][3:33]
-    
 
 
-    TRAIN_DURATION = 28
+
+
 
 
     """
