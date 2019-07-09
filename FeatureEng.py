@@ -67,7 +67,7 @@ def split_dataset(path='data/'):
     files = os.listdir(path)
     test_file = 'step1_0050.csv'
     ticker = test_file.split('.')[0].split('_')[1]
-    if not os._exists(f'data/test/{ticker}'):
+    if not os.path.exists(f'data/test/{ticker}'):
         os.mkdir(f'data/test/{ticker}')
 
     test_df = pd.read_csv('data/'+test_file, index_col=0).dropna()
@@ -79,7 +79,7 @@ def split_dataset(path='data/'):
     date_key = sorted(date_key.items(), key=lambda x:x[1])
 
     """Decide how many training and testing sample"""
-    sorted_date_set = [date for date, _ in date_key][:5]
+    sorted_date_set = [date for date, _ in date_key][3:33]
 
 
     TRAIN_DURATION = 28
@@ -124,9 +124,9 @@ def fetch_training(df, training_start, duration):
     Fetch the training data for a fixed period
     :return: output - in that duration
     """
-    if not dt.datetime.strptime(training_start, '%Y-%m-%d').weekday() < 5:
-        print('Start date should be weekday!')
-        return False
+    # if not dt.datetime.strptime(training_start, '%Y-%m-%d').weekday() < 5:
+    #     print('Start date should be weekday!')
+    #     return False
 
     dt_training_start = dt.datetime.strptime(training_start, '%Y-%m-%d')
     dt_training_end = dt_training_start + dt.timedelta(days=duration)
