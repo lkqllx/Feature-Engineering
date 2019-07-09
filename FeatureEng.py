@@ -19,10 +19,11 @@ from statsmodels.api import OLS, add_constant
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 import multiprocessing as mp
+import csv
 
 TRAIN_DURATION = 28
 
-TRAIN_DURATION = 28
+
 
 
 
@@ -198,6 +199,9 @@ def fetch_testing(df, testing_start, curr_date_set, duration=1):
 class Preprocess:
     def preprocess(self, df: pd.DataFrame, threshold: float = 0.0001, time_step=5, num_feature=8, normalize=True) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         label = pd.DataFrame(index=df.index)
+        if 'date_str' in df.columns:
+            df.drop('date_str', axis=1, inplace=True)
+
         for idx, name in enumerate(df.columns):
             "Creat training labels"
             if re.match('Y_M_.', name):
@@ -217,24 +221,21 @@ class Preprocess:
 
         y_reg = df.iloc[:, 2:7]
         df = df.iloc[:, num_feature:]
-        for idx in range(0, 10 - 1):
+        for idx in range(0, 1000 - 1):
             if (df.size - (df.shape[1]) * idx) % (time_step * df.shape[1]) == 0:
                 possible_reshape_row = idx
                 break
 
         return df[possible_reshape_row:], label[possible_reshape_row::time_step], y_reg[possible_reshape_row::time_step]
 
-
-
-
-
-
 class NeuralNet(Preprocess):
-    def __init__(self, df, time_step = 5):
-        self.df = df
+    def __init__(self, training, test, time_step=5, epoch=10):
+        self.training = training
+        self.test = test
         self.time_step = time_step
+        self.epoch = epoch
 
-    def create_network(self):
+    def create_network(self) -> Sequential:
         seq = Sequential()
         seq.add(LSTM(128, input_shape=(self.time_step, 55), return_sequences=True))
         seq.add(LSTM(128, dropout=0.2, recurrent_dropout=0.2, return_sequences=True))
@@ -245,15 +246,20 @@ class NeuralNet(Preprocess):
         return seq
 
     def run(self):
-        self.processed_df, self.label, _ = self.preprocess(self.df, 0.0001)
+        self.processed_train, self.train_label, _ = self.preprocess(self.training, 0.0000, time_step=self.time_step)
         self.nn = self.create_network()
-        self.nn.fit(self.processed_df.values.reshape((-1, self.time_step, 55)),
-                np_utils.to_categorical(self.label['Label_1'], num_classes=3),
-                epochs=20, validation_split=0.05, shuffle=False)
+        self.nn.fit(self.processed_train.values.reshape((-1, self.time_step, 55)),
+                np_utils.to_categorical(self.train_label['Label_1'], num_classes=3),
+                epochs=self.epoch, validation_split=0.05, shuffle=False)
 
     def predict(self):
-        self.nn.predict()
-
+        processed_test, y, _ = self.preprocess(self.test, 0.0000)
+        _, train_acc = self.nn.evaluate(x=self.processed_train.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(self.train_label['Label_1'], num_classes=3),
+                                  steps=self.time_step)
+        _, test_acc = self.nn.evaluate(x=processed_test.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(y['Label_1'], num_classes=3),
+                                  steps=self.time_step)
+        print(f'Train acc - {train_acc}')
+        print(f'Test acc - {test_acc}')
 
 class Regressor(Preprocess):
     def __init__(self, df, train_interval=14, test_interval=1, test_period=100, num_feature=16):
@@ -334,14 +340,21 @@ if __name__ == '__main__':
     """
     Splite the data
     """
-    split_dataset()
+    # split_dataset()
 
     """
     Preprocess dataframe and reshape the data fed into neural networks
     """
-    # df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
-    # nn = NeuralNet(df, time_step=30)
-    # nn.run()
+    train_path = 'data/training/'
+    test_path = 'data/test/0050/'
+    for train_file in os.listdir(train_path):
+        if train_file[-3:] == 'csv':
+            train = pd.read_csv(train_path+train_file, index_col=0, quoting=csv.QUOTE_NONE, error_bad_lines=False)
+            idx = train_file.split('_')[1][0]
+            test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
+            nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
+            nn.run()
+            nn.predict()
 
 
     """
