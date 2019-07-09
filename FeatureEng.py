@@ -67,7 +67,7 @@ def split_dataset(path='data/'):
     files = os.listdir(path)
     test_file = 'step1_0050.csv'
     ticker = test_file.split('.')[0].split('_')[1]
-    if not os._exists(f'data/test/{ticker}'):
+    if not os.path.exists(f'data/test/{ticker}'):
         os.mkdir(f'data/test/{ticker}')
 
     test_df = pd.read_csv('data/'+test_file, index_col=0).dropna()
@@ -79,7 +79,7 @@ def split_dataset(path='data/'):
     date_key = sorted(date_key.items(), key=lambda x:x[1])
 
     """Decide how many training and testing sample"""
-    sorted_date_set = [date for date, _ in date_key][:5]
+    sorted_date_set = [date for date, _ in date_key][3:33]
 
 
     TRAIN_DURATION = 28
@@ -105,13 +105,13 @@ def split_dataset(path='data/'):
 
 
     """Append training data to different test period"""
-    for file in files:
-        print('-'*20, f'{file}', '-'*20)
+    for count, file in enumerate(files):
+        print('-'*20, f'{file} - Count {count}', '-'*20)
         if file.split('.')[1] == 'csv' and file != test_file:
             df = pd.read_csv(path+file, index_col=0)
             df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
             for idx, curr_date in enumerate(sorted_date_set):
-                if idx % 1 == 0:
+                if idx % 10 == 0:
                     print(f'{file} Done - {idx}')
                 training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
                 prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
@@ -287,6 +287,8 @@ class Regressor(Preprocess):
                 # print(f'R-square is {r2_score(test_y, y_pred)}')
             except:
                 pass
+
+
 if __name__ == '__main__':
     # comp_BM(file='data/step1_1101.csv')
     # concat_data()
