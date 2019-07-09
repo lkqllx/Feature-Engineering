@@ -80,6 +80,7 @@ def split_dataset(path='data/'):
 
     """Decide how many training and testing sample"""
     sorted_date_set = [date for date, _ in date_key][3:33]
+    
 
 
     TRAIN_DURATION = 28
@@ -88,35 +89,40 @@ def split_dataset(path='data/'):
     """
     Initialize directory and test file
     """
-    for idx, curr_date in enumerate(sorted_date_set):
-        if idx % 1 == 0:
-            print(f'Test Done - {idx}')
-
-        training = fetch_training(test_df, training_start=curr_date, duration=TRAIN_DURATION)
-        test_date = dt.datetime.strptime(curr_date, '%Y-%m-%d') + dt.timedelta(days=TRAIN_DURATION)
-        for _ in range(100):
-            if test_date.strftime('%Y-%m-%d') in date_set:
-                break
-            else:
-                test_date += dt.timedelta(days=1)
-        testing = fetch_testing(test_df, testing_start=test_date.strftime('%Y-%m-%d'), duration=1, curr_date_set=date_set)
-        training.to_csv(f'data/training/training_{idx}.csv')
-        testing.to_csv(f'data/test/{ticker}/test_{idx}.csv')
+    # for idx, curr_date in enumerate(sorted_date_set):
+    #     if idx % 1 == 0:
+    #         print(f'Test Done - {idx}')
+    #
+    #     training = fetch_training(test_df, training_start=curr_date, duration=TRAIN_DURATION)
+    #     test_date = dt.datetime.strptime(curr_date, '%Y-%m-%d') + dt.timedelta(days=TRAIN_DURATION)
+    #     for _ in range(100):
+    #         if test_date.strftime('%Y-%m-%d') in date_set:
+    #             break
+    #         else:
+    #             test_date += dt.timedelta(days=1)
+    #     testing = fetch_testing(test_df, testing_start=test_date.strftime('%Y-%m-%d'), duration=1, curr_date_set=date_set)
+    #     training.to_csv(f'data/training/training_{idx}.csv')
+    #     testing.to_csv(f'data/test/{ticker}/test_{idx}.csv')
 
 
     """Append training data to different test period"""
-    for count, file in enumerate(files):
+    for count, file in enumerate(files[11:]):
+        count += 11
         print('-'*20, f'{file} - Count {count}', '-'*20)
-        if file.split('.')[1] == 'csv' and file != test_file:
-            df = pd.read_csv(path+file, index_col=0)
-            df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-            for idx, curr_date in enumerate(sorted_date_set):
-                if idx % 10 == 0:
-                    print(f'{file} Done - {idx}')
-                training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
-                prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
-                prev_training = prev_training.append(training, sort=False)
-                prev_training.to_csv(f'data/training/training_{idx}.csv')
+        try:
+            if file.split('.')[1] == 'csv' and file != test_file:
+                df = pd.read_csv(path+file, index_col=0)
+                df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
+                for idx, curr_date in enumerate(sorted_date_set):
+                    if idx % 10 == 0:
+                        print(f'{file} Done - {idx}')
+                    training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
+                    prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
+                    prev_training = prev_training.append(training, sort=False)
+                    prev_training.to_csv(f'data/training/training_{idx}.csv')
+        except Exception as e:
+            print(f'{e} in {file}')
+            continue
 
 
 def fetch_training(df, training_start, duration):
