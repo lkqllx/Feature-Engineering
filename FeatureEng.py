@@ -1,9 +1,7 @@
-# import keras as ks
 import pandas as pd
 import numpy as np
 import re
 import tensorflow as tf
-from sklearn.preprocessing import LabelEncoder
 from keras.utils import np_utils
 from keras.models import Sequential
 from keras.layers.core import Flatten, Dense
@@ -16,187 +14,15 @@ import os
 import h5py
 import datetime as dt
 from statsmodels.api import OLS, add_constant
-from sklearn.linear_model import LinearRegression
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
-import multiprocessing as mp
-import csv
 import keras
-TRAIN_DURATION = 252
+from utility import *
 
 config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 8} )
 sess = tf.Session(config=config)
 keras.backend.set_session(sess)
-
-
-
-def parse_date(date):
-    return dt.datetime.strptime(date, '%Y-%m-%d')
-
-def next_weekday(date):
-    date += dt.timedelta(days=1)
-    for _ in range(7):
-        if date.weekday() < 5:
-            break
-        else:
-            date += dt.timedelta(days=1)
-    return date
-
-def concat_data(path='data/'):
-    files = os.listdir(path)
-    files = [file for file in files if file != '.DS_Store']
-    save_to = 'data/all_data.h5'
-    for idx, file in enumerate(files):
-        curr_df = pd.read_csv(path+file)
-        if idx == 0:
-            curr_df.to_hdf(save_to, 'data', mode='w', format='table')
-            del curr_df
-        else:
-            curr_df.to_hdf(save_to, 'data', append=True)
-            del curr_df
-        if idx % 5 == 0:
-            print(f'Processing {idx}')
-
-def comp_BM(file='data/step1_2492.csv'):
-    try:
-        curr_df = pd.read_csv(file, index_col=0)
-    except:
-        curr_df = pd.read_hdf(file)
-    nn = NeuralNet(curr_df)
-    _, label, _ = nn.preprocess(curr_df)
-    shifted_label = label.shift(1)
-    shifted_label, label = shifted_label[1:], label[1:]
-    BM = {}
-    for col in label.columns:
-        correct = sum(shifted_label[col] == label[col])
-        total = shifted_label.shape[0]
-        BM[col] = round(correct / total, 2)
-    print(BM)
-
-def split_dataset(path = 'data/'):
-    files = os.listdir(path)
-    files = [file for file in files if file[-3:] == 'csv']
-    test_file = 'step1_0050.csv'
-    ticker = test_file.split('.')[0].split('_')[1]
-    if not os.path.exists(f'data/test/{ticker}'):
-        os.mkdir(f'data/test/{ticker}')
-
-    test_df = pd.read_csv('data/'+test_file, index_col=0).dropna()
-    test_df['date_str'] = test_df['date'].values
-    test_df.date = test_df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-
-    date_set = set(test_df['date_str'].values.tolist())
-    date_key = {date: dt.datetime.strptime(date, '%Y-%m-%d') for date in date_set}
-    date_key = sorted(date_key.items(), key=lambda x:x[1])
-
-    """Decide how many training and testing sample"""
-    global sorted_date_set
-    sorted_date_set = [date for date, _ in date_key][3:33]
-
-
-
-    """
-    Initialize directory and test file
-    """
-    for idx, curr_date in enumerate(sorted_date_set):
-        if idx % 1 == 0:
-            print(f'Test Done - {idx}')
-
-        training = fetch_training(test_df, training_start=curr_date, duration=TRAIN_DURATION)
-        test_date = dt.datetime.strptime(curr_date, '%Y-%m-%d') + dt.timedelta(days=TRAIN_DURATION)
-        for _ in range(100):
-            if test_date.strftime('%Y-%m-%d') in date_set:
-                break
-            else:
-                test_date += dt.timedelta(days=1)
-        testing = fetch_testing(test_df, testing_start=test_date.strftime('%Y-%m-%d'), duration=1, curr_date_set=date_set)
-        training.to_csv(f'data/training/{ticker}/training_{idx}.csv')
-        testing.to_csv(f'data/test/{ticker}/test_{idx}.csv')
-
-
-    """Append training data to different test period"""
-    for count, file in enumerate(files[11:]):
-        count += 11
-        print('-'*20, f'{file} - Count {count}', '-'*20)
-        try:
-            if file.split('.')[1] == 'csv' and file != test_file:
-                df = pd.read_csv(path+file, index_col=0)
-                df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-                for idx, curr_date in enumerate(sorted_date_set):
-                    if idx % 10 == 0:
-                        print(f'{file} Done - {idx}')
-                    training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
-                    prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
-                    prev_training = prev_training.append(training, sort=False)
-                    prev_training.to_csv(f'data/training/{ticker}/training_{idx}.csv')
-        except Exception as e:
-            print(f'{e} in {file}')
-            continue
-
-    """multi-processing the concat function"""
-    # print(mp.cpu_count())
-    # pool = mp.Pool(mp.cpu_count())
-    # pool.map(concat_training, files[24:])
-
-def concat_training(file):
-    path = 'data/'
-    test_file = 'step1_0050.csv'
-
-    # for count, file in enumerate(files[11:]):
-    #     count += 11
-    print('-'*20, f'{file}', '-'*20)
-    try:
-        if file.split('.')[1] == 'csv' and file != test_file:
-            df = pd.read_csv(path+file, index_col=0)
-            df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-            for idx, curr_date in enumerate(sorted_date_set):
-                if idx % 10 == 0:
-                    print(f'{file} Done - {idx}')
-                training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
-                prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
-                prev_training = prev_training.append(training, sort=False)
-                prev_training.to_csv(f'data/training/training_{idx}.csv')
-    except Exception as e:
-        print(f'{e} in {file}')
-
-
-
-def fetch_training(df, training_start, duration):
-    """
-    Fetch the training data for a fixed period
-    :return: output - in that duration
-    """
-    # if not dt.datetime.strptime(training_start, '%Y-%m-%d').weekday() < 5:
-    #     print('Start date should be weekday!')
-    #     return False
-
-    dt_training_start = dt.datetime.strptime(training_start, '%Y-%m-%d')
-    dt_training_end = dt_training_start + dt.timedelta(days=duration)
-    try:
-        return df.loc[(df.date < dt_training_end) & (df.date >= dt_training_start)]
-
-    except:
-        print('Error fetch_training')
-        return False
-
-def fetch_testing(df, testing_start, curr_date_set, duration=1):
-    """
-    Fetch the testing data for a fixed period but the testing start may not in the dataframe
-    So we need to look for the next available start date
-    :return: output - in that duration
-    """
-    dt_testing_start = dt.datetime.strptime(testing_start, '%Y-%m-%d')
-    for _ in range(200):
-        if testing_start in curr_date_set:
-            dt_testing_end = dt_testing_start + dt.timedelta(days=duration)
-            break
-        else:
-            dt_testing_start = next_weekday(dt_testing_start)
-    try:
-        return df.loc[(df.date < dt_testing_end) & (df.date >= dt_testing_start)]
-
-    except:
-        print('Error fectch_testing')
-        return False
 
 class Preprocess:
     def preprocess(self, df: pd.DataFrame, threshold: float = 0.0001, time_step=5, num_feature=8, normalize=True) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
@@ -230,14 +56,25 @@ class Preprocess:
 
         return df[possible_reshape_row:], label[possible_reshape_row::time_step], y_reg[possible_reshape_row::time_step]
 
+    def pca(self, train_data, test_data, n_components=0.95):
+        # scaler = StandardScaler().fit(X=train_data)
+        # train_data = scaler.transform(train_data)
+        # test_data = scaler.transform(test_data)
+        pca = PCA(n_components, random_state=1)
+        pca.fit(train_data)
+        print(pca.explained_variance_ratio_)
+        return pca.transform(train_data), pca.transform(test_data)
+
 class NeuralNet(Preprocess):
-    def __init__(self, training, test, time_step=5, epoch=10):
+    def __init__(self, training, test, time_step=5, epoch=10, pca_flag=False, n_components=4):
         self.training = training
         self.test = test
         self.time_step = time_step
         self.epoch = epoch
+        self.pca_flag = pca_flag
+        self.n_components = n_components
 
-    def create_network(self) -> Sequential:
+    def create_cls_network(self) -> Sequential:
         seq = Sequential()
         seq.add(LSTM(128, input_shape=(self.time_step, 55), return_sequences=True))
         seq.add(LSTM(128, dropout=0.2, recurrent_dropout=0.2, return_sequences=True))
@@ -247,17 +84,36 @@ class NeuralNet(Preprocess):
         seq.compile(loss='categorical_crossentropy', optimizer='adadelta', metrics=['categorical_accuracy'])
         return seq
 
-    def run(self):
-        self.processed_train, self.train_label, _ = self.preprocess(self.training, 0.0015, time_step=self.time_step)
-        self.nn = self.create_network()
-        self.nn.fit(self.processed_train.values.reshape((-1, self.time_step, 55)),
-                np_utils.to_categorical(self.train_label['Label_1'], num_classes=3),
+    def create_reg_model(self, n_components) -> Sequential:
+        seq = Sequential()
+        seq.add(Dense(units=128, input_shape=(None, n_components), activation='relu'))
+        seq.add(Dense(units=64, activation='relu'))
+        seq.add(Dense(unit=32, activation='relu'))
+        seq.add(Dense(unit=1))
+        return seq
+
+    def run_cls(self):
+        self.train_x, self.train_y, _ = self.preprocess(self.training, 0.0015, time_step=self.time_step)
+        self.nn = self.create_cls_network()
+        self.nn.fit(self.train_x.values.reshape((-1, self.time_step, 55)),
+                np_utils.to_categorical(self.train_y['Label_1'], num_classes=3),
                 epochs=self.epoch, validation_split=0.05, shuffle=False)
 
-    def predict(self):
+    def run_reg(self):
+        self.train_x, _, self.train_y = self.preprocess(self.training, 0., time_step=self.time_step)
+        self.test_x, _, self.test_y = self.preprocess(self.test, 0., time_step=self.time_step)
+        if self.pca_flag:
+            self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
+        self.nn = self.create_reg_model(self.n_components)
+        self.nn.fit(self.train_x.values, self.train_y['Label_1'].values,
+                epochs=self.epoch, validation_split=0.05, shuffle=False, batch_size=300)
+
+    def predict_reg(self):
+        y_pred = self.nn.predict(self.test_x, batch_size=300)
+        print(f'R-square is: {np.round(r2_score(self.test_y, y_pred), 3)}')
+
+    def predict_cls(self):
         processed_test, y, _ = self.preprocess(self.test, 0.0015, time_step=self.time_step)
-        # _, train_acc = self.nn.evaluate(x=self.processed_train.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(self.train_label['Label_1'], num_classes=3),
-        #                           steps=self.time_step)
         _, test_acc = self.nn.evaluate(x=processed_test.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(y['Label_1'], num_classes=3),
                                   steps=self.time_step)
         # print(f'Train acc - {train_acc}')
@@ -266,7 +122,7 @@ class NeuralNet(Preprocess):
         y_pred = self.nn.predict(x=processed_test.values.reshape(-1, self.time_step, 55), steps=self.time_step)
 
 class Regressor(Preprocess):
-    def __init__(self, df, train_interval=14, test_interval=1, test_period=100, num_feature=16):
+    def __init__(self, train_data, test_data, num_feature=14, pca_flag=False, n_components=2):
         """
         Regressor for linear regression
         :param df: input data
@@ -274,68 +130,21 @@ class Regressor(Preprocess):
         :param test_period: how many days to be tested
         """
         super().__init__()
-        self.df = df
-        self.train_interval = train_interval
-        self.test_period = test_period
-        self.test_interval = test_interval
-        self.curr_start = df.date[0]
-        self.date = df.date.reset_index(drop=True)
         self.curr_pointer = 0 # pointed to the index of current date
-        self.preprocess_df, _, self.label = self.preprocess(df=df, time_step=1, num_feature=num_feature, normalize=False)
-
-
-    def fetch_data(self):
-        """
-        Fetch data for a fixed duration.
-
-        If train_interval = 14, test_interval = 1
-        The function will fetch the training data of next two weeks' available data regardless the weekends
-        :return: training and testing data
-        """
-        train_start = dt.datetime.strptime(self.curr_start, '%Y-%m-%d')
-        train_end = train_start + dt.timedelta(days=self.train_interval)
-
-        train_start_idx = self.curr_pointer
-        updated = False
-        for train_idx in range(train_start_idx, self.date.shape[0]):
-            if ((dt.datetime.strptime(self.date[train_idx], '%Y-%m-%d') - train_start).days >= self.test_interval) and not updated:
-                self.curr_pointer = train_idx
-                self.curr_start = self.date[self.curr_pointer]
-                updated = True
-
-            if (train_end - dt.datetime.strptime(self.date[train_idx], '%Y-%m-%d')).days <= -1:
-                train_end_idx = train_idx - 1
-                test_start_idx = train_idx
-                test_end = dt.datetime.strptime(self.date[test_start_idx], '%Y-%m-%d') # only one day test
-                break
-
-        for test_idx in range(test_start_idx, self.date.shape[0]):
-            if (test_end - dt.datetime.strptime(self.date[test_idx], '%Y-%m-%d')).days <= -1:
-                test_end_idx = test_idx - 1
-                break
-        print(f'Train start  - {self.date[train_start_idx]}')
-        print(f'Train end  - {self.date[train_end_idx]}')
-        print(f'Test start  - {self.date[test_start_idx]}')
-        print(f'Test end  - {self.date[test_end_idx+1]}')
-
-        return self.preprocess_df[train_start_idx:train_end_idx], self.label[train_start_idx:train_end_idx],\
-               self.preprocess_df[test_start_idx:test_end_idx], self.label[test_start_idx:test_end_idx]
+        self.train_x, _, self.train_y = self.preprocess(df=train_data, time_step=1, num_feature=num_feature,
+                                                        normalize=False)
+        self.test_x, _, self.test_y = self.preprocess(df=test_data, time_step=1, num_feature=num_feature,
+                                                        normalize=False)
+        self.pca_flag = pca_flag
+        self.n_components = n_components
 
     def run_regr(self):
-        preprocess_df = add_constant(self.preprocess_df)
-        regr = OLS(self.label['Y_M_1'], preprocess_df).fit()
+        if self.pca_flag == True:
+            self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
+        regr = OLS(self.train_y['Y_M_1'], add_constant(self.train_x)).fit()
         print(regr.summary())
-        for _ in range(50):
-            try:
-                train_x, train_y, test_x, test_y = self.fetch_data()
-                # regr = OLS(train_y['Y_M_1'], train_x).fit()
-                # print(regr.summary())
-                # y_pred = regr.predict(test_x)
-                # # print(f'Mean error is {mean_squared_error(test_y, y_pred)}')
-                # print(f'R-square is {r2_score(test_y, y_pred)}')
-            except:
-                pass
-
+        y_pred = regr.predict(add_constant(self.test_x))
+        print(f'R-square is {r2_score(self.test_y.Y_M_1, y_pred)}')
 
 if __name__ == '__main__':
     # comp_BM(file='data/step1_1101.csv')
@@ -353,25 +162,31 @@ if __name__ == '__main__':
     test_path = 'data/test/0050/'
     for train_file in os.listdir(train_path):
         if train_file[-3:] == 'csv':
-            train = pd.read_csv(train_path+train_file, index_col=0, quoting=csv.QUOTE_NONE, error_bad_lines=False)
+            train = pd.read_csv(train_path+train_file, index_col=0)
             idx = train_file.split('_')[1][0]
             test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
-            nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
-            nn.run()
-            nn.predict()
+            # nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
+            # nn.run_cls()
+            # nn.predict_cls()
 
 
+            nn = NeuralNet(training=train, test=test, time_step=1, epoch=5,  pca_flag=True, n_components=5)
+            nn.run_reg()
+            nn.predict_reg()
     """
     1.Preprocess dataframe regarding to different time scale
     2.Build the regression model
     """
-    # df = pd.read_csv('data/step1_0050.csv', index_col=0).dropna()
-    # df['date_str'] = df['date'].values
-    # df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-    # # training = fetch_training(df, training_start='2018-01-22', duration=14)
-    # testing = fetch_testing(df, testing_start='2018-01-22', duration=1)
-    # df.drop('date_str', axis=1)
-    # reg = Regressor(df=df)
+    # train_path = 'data/training/0050/'
+    # test_path = 'data/test/0050/'
+    # for train_file in os.listdir(train_path):
+    #     if train_file[-3:] == 'csv':
+    #         train = pd.read_csv(train_path+train_file, index_col=0)
+    #         idx = train_file.split('_')[1][0]
+    #         test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
+    #         reg = Regressor(train_data=train, test_data=test, pca_flag=True, n_components=4)
+    #         reg.run_regr()
+
 
 
 
