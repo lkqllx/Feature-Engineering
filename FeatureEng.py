@@ -109,7 +109,7 @@ def split_dataset(path = 'data/'):
             else:
                 test_date += dt.timedelta(days=1)
         testing = fetch_testing(test_df, testing_start=test_date.strftime('%Y-%m-%d'), duration=1, curr_date_set=date_set)
-        training.to_csv(f'data/training/training_{idx}.csv')
+        training.to_csv(f'data/training/{ticker}/training_{idx}.csv')
         testing.to_csv(f'data/test/{ticker}/test_{idx}.csv')
 
 
@@ -127,7 +127,7 @@ def split_dataset(path = 'data/'):
                     training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
                     prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
                     prev_training = prev_training.append(training, sort=False)
-                    prev_training.to_csv(f'data/training/training_{idx}.csv')
+                    prev_training.to_csv(f'data/training/{ticker}/training_{idx}.csv')
         except Exception as e:
             print(f'{e} in {file}')
             continue
@@ -349,7 +349,7 @@ if __name__ == '__main__':
     """
     Preprocess dataframe and reshape the data fed into neural networks
     """
-    train_path = 'data/training/'
+    train_path = 'data/training/0050/'
     test_path = 'data/test/0050/'
     for train_file in os.listdir(train_path):
         if train_file[-3:] == 'csv':
