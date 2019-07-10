@@ -88,8 +88,9 @@ class NeuralNet(Preprocess):
         seq = Sequential()
         seq.add(Dense(units=128, input_shape=(None, n_components), activation='relu'))
         seq.add(Dense(units=64, activation='relu'))
-        seq.add(Dense(unit=32, activation='relu'))
-        seq.add(Dense(unit=1))
+        seq.add(Dense(units=32, activation='relu'))
+        seq.add(Dense(units=1))
+        seq.compile(loss='mean_squared_error', optimizer='Adam', metrics=['categorical_accuracy'])
         return seq
 
     def run_cls(self):
@@ -105,12 +106,12 @@ class NeuralNet(Preprocess):
         if self.pca_flag:
             self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
         self.nn = self.create_reg_model(self.n_components)
-        self.nn.fit(self.train_x.values, self.train_y['Label_1'].values,
+        self.nn.fit(self.train_x, self.train_y['Y_M_1'].values,
                 epochs=self.epoch, validation_split=0.05, shuffle=False, batch_size=300)
 
     def predict_reg(self):
         y_pred = self.nn.predict(self.test_x, batch_size=300)
-        print(f'R-square is: {np.round(r2_score(self.test_y, y_pred), 3)}')
+        print(f'R-square is: {np.round(r2_score(self.test_y.Y_M_1.values, y_pred), 3)}')
 
     def predict_cls(self):
         processed_test, y, _ = self.preprocess(self.test, 0.0015, time_step=self.time_step)
