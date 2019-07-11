@@ -15,10 +15,12 @@ import h5py
 import datetime as dt
 from statsmodels.api import OLS, add_constant
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import keras
 from utility import *
+from numpy.random import seed
+seed(10)
 
 config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 8} )
 sess = tf.Session(config=config)
@@ -57,22 +59,24 @@ class Preprocess:
         return df[possible_reshape_row:], label[possible_reshape_row::time_step], y_reg[possible_reshape_row::time_step]
 
     def pca(self, train_data, test_data, n_components=0.95):
-        # scaler = StandardScaler().fit(X=train_data)
-        # train_data = scaler.transform(train_data)
-        # test_data = scaler.transform(test_data)
+        scaler = StandardScaler().fit(X=train_data, )
+        train_data = scaler.transform(train_data)
+        test_data = scaler.transform(test_data)
         pca = PCA(n_components, random_state=1)
         pca.fit(train_data)
-        print(pca.explained_variance_ratio_)
+        # print(pca.explained_variance_ratio_)
         return pca.transform(train_data), pca.transform(test_data)
+        # return train_data, test_data
 
 class NeuralNet(Preprocess):
-    def __init__(self, training, test, time_step=5, epoch=10, pca_flag=False, n_components=4):
+    def __init__(self, training, test, time_step=5, epoch=10, pca_flag=False, batch=256, n_components=4):
         self.training = training
         self.test = test
         self.time_step = time_step
         self.epoch = epoch
         self.pca_flag = pca_flag
         self.n_components = n_components
+        self.batch = batch
 
     def create_cls_network(self) -> Sequential:
         seq = Sequential()
@@ -86,10 +90,9 @@ class NeuralNet(Preprocess):
 
     def create_reg_model(self, n_components) -> Sequential:
         seq = Sequential()
-        seq.add(Dense(units=128, input_dim=n_components, kernel_initializer='normal', activation='relu'))
-        seq.add(Dense(units=64, activation='relu'))
+        seq.add(Dense(units=64, input_dim=n_components, activation='relu'))
         seq.add(Dense(units=32, activation='relu'))
-        seq.add(Dense(units=1))
+        seq.add(Dense(units=1, activation='linear'))
         seq.compile(loss='mean_squared_error', optimizer='adam')
         return seq
 
@@ -101,17 +104,23 @@ class NeuralNet(Preprocess):
                 epochs=self.epoch, validation_split=0.05, shuffle=False)
 
     def run_reg(self):
-        self.train_x, _, self.train_y = self.preprocess(self.training, 0., time_step=self.time_step)
-        self.test_x, _, self.test_y = self.preprocess(self.test, 0., time_step=self.time_step)
+        self.train_x, _, self.train_y = self.preprocess(self.training, 0., time_step=self.time_step, num_feature=14, normalize=False)
+        self.test_x, _, self.test_y = self.preprocess(self.test, 0., time_step=self.time_step, num_feature=14, normalize=False)
         if self.pca_flag:
             self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
+
+        scaler = MinMaxScaler()
+        self.train_x = scaler.fit_transform(self.train_x)
+        self.test_x = scaler.transform(self.test_x)
+
         self.nn = self.create_reg_model(self.train_x.shape[1])
-        self.nn.fit(self.train_x, self.train_y['Y_M_1'].values,
-                epochs=self.epoch, validation_split=0.05, shuffle=False)
+        self.nn.fit(self.train_x, self.train_y['Y_M_1'],
+                epochs=self.epoch, validation_split=0.05, shuffle=True, verbose=2, batch_size=self.batch)
 
     def predict_reg(self):
-        y_pred = self.nn.predict(self.test_x)
-        print(f'R-square is {np.round(r2_score(self.test_y.Y_M_1.values, y_pred), 3)}')
+        y_pred = self.nn.predict(self.test_x, batch_size=300)
+        print(f'R-square is {np.round(r2_score(self.test_y.Y_M_1, y_pred), 3)}')
+        print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
 
     def predict_cls(self):
         processed_test, y, _ = self.preprocess(self.test, 0.0015, time_step=self.time_step)
@@ -143,9 +152,10 @@ class Regressor(Preprocess):
         if self.pca_flag == True:
             self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
         regr = OLS(self.train_y['Y_M_1'], add_constant(self.train_x)).fit()
-        print(regr.summary())
+        # print(regr.summary())
         y_pred = regr.predict(add_constant(self.test_x))
         print(f'R-square is {r2_score(self.test_y.Y_M_1, y_pred)}')
+        print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
 
 if __name__ == '__main__':
     # comp_BM(file='data/step1_1101.csv')
@@ -159,8 +169,8 @@ if __name__ == '__main__':
     """
     Preprocess dataframe and reshape the data fed into neural networks
     """
-    train_path = 'data/training/0050/'
-    test_path = 'data/test/0050/'
+    train_path = 'data/training/2330/'
+    test_path = 'data/test/2330/'
     for train_file in os.listdir(train_path):
         if train_file[-3:] == 'csv':
             train = pd.read_csv(train_path+train_file, index_col=0)
@@ -171,21 +181,21 @@ if __name__ == '__main__':
             # nn.predict_cls()
 
 
-            nn = NeuralNet(training=train, test=test, time_step=1, epoch=5,  pca_flag=False, n_components=3)
+            nn = NeuralNet(training=train, test=test, time_step=1, epoch=50,  batch=128, pca_flag=False, n_components=.95)
             nn.run_reg()
             nn.predict_reg()
     """
     1.Preprocess dataframe regarding to different time scale
     2.Build the regression model
     """
-    # train_path = 'data/training/0050/'
-    # test_path = 'data/test/0050/'
+    # train_path = 'data/training/2330/'
+    # test_path = 'data/test/2330/'
     # for train_file in os.listdir(train_path):
     #     if train_file[-3:] == 'csv':
     #         train = pd.read_csv(train_path+train_file, index_col=0)
     #         idx = train_file.split('_')[1][0]
     #         test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
-    #         reg = Regressor(train_data=train, test_data=test, pca_flag=True, n_components=4)
+    #         reg = Regressor(train_data=train, test_data=test, pca_flag=False, n_components=30)
     #         reg.run_regr()
 
 
