@@ -20,7 +20,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 import keras
 from utility import *
 from numpy.random import seed
-seed(10)
+# seed(10)
 
 config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 8} )
 sess = tf.Session(config=config)
@@ -103,6 +103,15 @@ class NeuralNet(Preprocess):
                 np_utils.to_categorical(self.train_y['Label_1'], num_classes=3),
                 epochs=self.epoch, validation_split=0.05, shuffle=False)
 
+    def predict_cls(self):
+        processed_test, y, _ = self.preprocess(self.test, 0.0015, time_step=self.time_step)
+        _, test_acc = self.nn.evaluate(x=processed_test.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(y['Label_1'], num_classes=3),
+                                  steps=self.time_step)
+        # print(f'Train acc - {train_acc}')
+        print(f'Test acc - {test_acc}')
+
+        y_pred = self.nn.predict(x=processed_test.values.reshape(-1, self.time_step, 55), steps=self.time_step)
+
     def run_reg(self):
         self.train_x, _, self.train_y = self.preprocess(self.training, 0., time_step=self.time_step, num_feature=14, normalize=False)
         self.test_x, _, self.test_y = self.preprocess(self.test, 0., time_step=self.time_step, num_feature=14, normalize=False)
@@ -118,18 +127,11 @@ class NeuralNet(Preprocess):
                 epochs=self.epoch, validation_split=0.05, shuffle=True, verbose=2, batch_size=self.batch)
 
     def predict_reg(self):
-        y_pred = self.nn.predict(self.test_x, batch_size=300)
-        print(f'R-square is {np.round(r2_score(self.test_y.Y_M_1, y_pred), 3)}')
+        y_pred = self.nn.predict(self.test_x)
+        print(f'R-square is {r2_score(self.test_y.Y_M_1, y_pred)}')
         print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
+        return r2_score(self.test_y.Y_M_1, y_pred)
 
-    def predict_cls(self):
-        processed_test, y, _ = self.preprocess(self.test, 0.0015, time_step=self.time_step)
-        _, test_acc = self.nn.evaluate(x=processed_test.values.reshape(-1, self.time_step, 55), y=np_utils.to_categorical(y['Label_1'], num_classes=3),
-                                  steps=self.time_step)
-        # print(f'Train acc - {train_acc}')
-        print(f'Test acc - {test_acc}')
-
-        y_pred = self.nn.predict(x=processed_test.values.reshape(-1, self.time_step, 55), steps=self.time_step)
 
 class Regressor(Preprocess):
     def __init__(self, train_data, test_data, num_feature=14, pca_flag=False, n_components=2):
@@ -156,6 +158,7 @@ class Regressor(Preprocess):
         y_pred = regr.predict(add_constant(self.test_x))
         print(f'R-square is {r2_score(self.test_y.Y_M_1, y_pred)}')
         print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
+        return r2_score(self.test_y.Y_M_1, y_pred)
 
 if __name__ == '__main__':
     # comp_BM(file='data/step1_1101.csv')
@@ -169,35 +172,42 @@ if __name__ == '__main__':
     """
     Preprocess dataframe and reshape the data fed into neural networks
     """
+    # train_path = 'data/training/2330/'
+    # test_path = 'data/test/2330/'
+    # record = []
+    # for train_file in os.listdir(train_path)[:2]:
+    #     if train_file[-3:] == 'csv':
+    #         train = pd.read_csv(train_path+train_file, index_col=0)
+    #         idx = train_file.split('_')[1][0]
+    #         test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
+    #         # nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
+    #         # nn.run_cls()
+    #         # nn.predict_cls()
+    #
+    #         nn = NeuralNet(training=train, test=test, time_step=1, epoch=50,  batch=128, pca_flag=False, n_components=.95)
+    #         nn.run_reg()
+    #         r2 = nn.predict_reg()
+    #         record.append([test.date[0], r2])
+    # record = pd.DataFrame(record, columns=['date', 'r2'])
+    # record.to_csv('nn_reg.csv', index=False)
+
+    """
+    1.Preprocess dataframe regarding to different time scale
+    2.Build the regression model
+    """
     train_path = 'data/training/2330/'
     test_path = 'data/test/2330/'
+    record = []
     for train_file in os.listdir(train_path):
         if train_file[-3:] == 'csv':
             train = pd.read_csv(train_path+train_file, index_col=0)
             idx = train_file.split('_')[1][0]
             test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
-            # nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
-            # nn.run_cls()
-            # nn.predict_cls()
-
-
-            nn = NeuralNet(training=train, test=test, time_step=1, epoch=50,  batch=128, pca_flag=False, n_components=.95)
-            nn.run_reg()
-            nn.predict_reg()
-    """
-    1.Preprocess dataframe regarding to different time scale
-    2.Build the regression model
-    """
-    # train_path = 'data/training/2330/'
-    # test_path = 'data/test/2330/'
-    # for train_file in os.listdir(train_path):
-    #     if train_file[-3:] == 'csv':
-    #         train = pd.read_csv(train_path+train_file, index_col=0)
-    #         idx = train_file.split('_')[1][0]
-    #         test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
-    #         reg = Regressor(train_data=train, test_data=test, pca_flag=False, n_components=30)
-    #         reg.run_regr()
-
+            reg = Regressor(train_data=train, test_data=test, pca_flag=False, n_components=30)
+            r2 = reg.run_regr()
+            record.append([test.date[0], r2])
+    record = pd.DataFrame(record, columns=['date', 'r2'])
+    record.to_csv('linear_reg.csv', index=False)
 
 
 
