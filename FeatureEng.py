@@ -64,7 +64,9 @@ class Preprocess:
         test_data = scaler.transform(test_data)
         pca = PCA(n_components, random_state=1)
         pca.fit(train_data)
-        # print(pca.explained_variance_ratio_)
+
+        print(pca.explained_variance_ratio_)
+        self.pca_ratio = np.sum(pca.explained_variance_ratio_)
         return pca.transform(train_data), pca.transform(test_data)
         # return train_data, test_data
 
@@ -128,9 +130,10 @@ class NeuralNet(Preprocess):
 
     def predict_reg(self):
         y_pred = self.nn.predict(self.test_x)
-        print(f'R-square is {r2_score(self.test_y.Y_M_1, y_pred)}')
-        print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
-        return r2_score(self.test_y.Y_M_1, y_pred)
+        r2 = r2_score(self.test_y.Y_M_1, y_pred)
+        print(f'R-square is {r2}')
+        # print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
+        return r2
 
 
 class Regressor(Preprocess):
@@ -157,7 +160,7 @@ class Regressor(Preprocess):
         # print(regr.summary())
         y_pred = regr.predict(add_constant(self.test_x))
         print(f'R-square is {r2_score(self.test_y.Y_M_1, y_pred)}')
-        print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
+        # print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
         return r2_score(self.test_y.Y_M_1, y_pred)
 
 if __name__ == '__main__':
@@ -172,42 +175,53 @@ if __name__ == '__main__':
     """
     Preprocess dataframe and reshape the data fed into neural networks
     """
-    # train_path = 'data/training/2330/'
-    # test_path = 'data/test/2330/'
+    # train_path = 'data/training/0050/'
+    # test_path = 'data/test/0050/'
     # record = []
-    # for train_file in os.listdir(train_path)[:2]:
+    # files = os.listdir(train_path)
+    # for train_file in files:
     #     if train_file[-3:] == 'csv':
     #         train = pd.read_csv(train_path+train_file, index_col=0)
-    #         idx = train_file.split('_')[1][0]
+    #         idx = train_file.split('_')[1].split('.')[0]
     #         test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
     #         # nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
     #         # nn.run_cls()
     #         # nn.predict_cls()
     #
-    #         nn = NeuralNet(training=train, test=test, time_step=1, epoch=50,  batch=128, pca_flag=False, n_components=.95)
+    #         epoch = 50
+    #         batch = 128
+    #         pca_flag = False
+    #
+    #         nn = NeuralNet(training=train, test=test, time_step=1, epoch=epoch,  batch=batch, pca_flag=pca_flag, n_components=.95)
     #         nn.run_reg()
     #         r2 = nn.predict_reg()
     #         record.append([test.date[0], r2])
     # record = pd.DataFrame(record, columns=['date', 'r2'])
-    # record.to_csv('nn_reg.csv', index=False)
+    # record.to_csv(f'nn_reg_epoch-{epoch}_bactch-{batch}_pca-{pca_flag}.csv', index=False)
 
     """
     1.Preprocess dataframe regarding to different time scale
     2.Build the regression model
     """
-    train_path = 'data/training/2330/'
-    test_path = 'data/test/2330/'
-    record = []
-    for train_file in os.listdir(train_path):
-        if train_file[-3:] == 'csv':
-            train = pd.read_csv(train_path+train_file, index_col=0)
-            idx = train_file.split('_')[1][0]
-            test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
-            reg = Regressor(train_data=train, test_data=test, pca_flag=False, n_components=30)
-            r2 = reg.run_regr()
-            record.append([test.date[0], r2])
-    record = pd.DataFrame(record, columns=['date', 'r2'])
-    record.to_csv('linear_reg.csv', index=False)
+    train_path = 'data/training/0050/'
+    test_path = 'data/test/0050/'
+    files = os.listdir(train_path)
+
+    for n_components in range(1,40,5):
+        record = []
+        print(f'Current number of component - {n_components}')
+        for train_file in files:
+            if train_file[-3:] == 'csv':
+                train = pd.read_csv(train_path+train_file, index_col=0)
+                idx = train_file.split('_')[1].split('.')[0]
+                test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
+                reg = Regressor(train_data=train, test_data=test, pca_flag=True, n_components=n_components)
+                r2 = reg.run_regr()
+                record.append([test.date[0], r2, reg.pca_ratio])
+        record = pd.DataFrame(record, columns=['date', 'r2', 'pca_ratio'])
+        record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
+        record.sort_index(inplace=True)
+        record.to_csv(f'linear_reg_pca-{n_components}_normed.csv', index=False)
 
 
 
