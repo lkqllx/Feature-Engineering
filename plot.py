@@ -5,7 +5,8 @@ import pyecharts.options as opts
 
 
 def plot(df, title:str):
-    df.index = df['date']
+    df.index = pd.to_datetime(df['date'])
+    df.sort_index(inplace=True)
     df = df.drop(['date'], axis=1)
     return (
         Line(init_opts=opts.InitOpts(width="1200px", height="400px"))
@@ -36,4 +37,5 @@ def plot(df, title:str):
 
 if __name__ == '__main__':
     df = pd.read_csv('linear_reg.csv')
-    plot(df, 'linear regression r-sqaure')
+    reg_plot = plot(df, 'linear regression r-sqaure')
+    reg_plot.render()
