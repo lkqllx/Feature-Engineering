@@ -65,9 +65,9 @@ class Preprocess:
         return df[possible_reshape_row:], label[possible_reshape_row::time_step], y_reg[possible_reshape_row::time_step]
 
     def pca(self, train_data, test_data, n_components=0.95):
-        scaler = StandardScaler().fit(X=train_data, )
-        train_data = scaler.transform(train_data)
-        test_data = scaler.transform(test_data)
+        # scaler = StandardScaler().fit(X=train_data, )
+        # train_data = scaler.transform(train_data)
+        # test_data = scaler.transform(test_data)
         pca = PCA(n_components, random_state=1)
         pca.fit(train_data)
 
@@ -209,8 +209,8 @@ if __name__ == '__main__':
     1.Preprocess dataframe regarding to different time scale
     2.Build the regression model
     """
-    train_path = 'data/training/0050_10Train/'
-    test_path = 'data/test/0050_10Train/'
+    train_path = 'data/training/0050_28Train/'
+    test_path = 'data/test/0050_28Test/'
     files = os.listdir(train_path)
 
     for n_components in range(1,40,5):
@@ -218,16 +218,20 @@ if __name__ == '__main__':
         print(f'Current number of component - {n_components}')
         for train_file in files:
             if train_file[-3:] == 'csv':
-                train = pd.read_csv(train_path+train_file, index_col=0)
-                idx = train_file.split('_')[1].split('.')[0]
-                test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
-                reg = Regressor(train_data=train, test_data=test, pca_flag=True, n_components=n_components)
-                r2 = reg.run_regr()
-                record.append([test.date[0], r2, reg.pca_ratio])
-        record = pd.DataFrame(record, columns=['date', 'r2', 'pca_ratio'])
+                try:
+                    train = pd.read_csv(train_path+train_file, index_col=0)
+                    idx = train_file.split('_')[1].split('.')[0]
+                    test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
+                    reg = Regressor(train_data=train, test_data=test, pca_flag=True, n_components=n_components)
+                    r2 = reg.run_regr()
+                    record.append([test.date[0], r2, reg.pca_ratio])
+                except:
+                    continue
+        record = pd.DataFrame(record, columns=['date', 'r2',  'pca_ratio'])
         record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
         record.sort_index(inplace=True)
-        record.to_csv(f'linear_reg_pca-{n_components}_normed.csv', index=False)
+        record.to_csv(f'result/linear_28//linear_reg_pca-{n_components}_without_norm.csv', index=False)
+        # record.to_csv(f'result/linear_28/linear_reg.csv', index=False)
 
 
 

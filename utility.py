@@ -5,7 +5,7 @@ import os
 import h5py
 import datetime as dt
 
-TRAIN_DURATION = 252
+TRAIN_DURATION = 28
 
 
 def parse_date(date):
