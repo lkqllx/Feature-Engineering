@@ -40,9 +40,10 @@ def split_dataset(path = 'data/'):
     files = [file for file in files if file[-3:] == 'csv']
     test_file = 'step1_0050.csv'
     ticker = test_file.split('.')[0].split('_')[1]
-    if not os.path.exists(f'data/test/{ticker}'):
-        os.mkdir(f'data/test/{ticker}')
-
+    if not os.path.exists(f'data/training/{ticker}_{TRAIN_DURATION}Train'):
+        os.mkdir(f'data/training/{ticker}_{TRAIN_DURATION}Train')
+    if not os.path.exists(f'data/test/{ticker}_{TRAIN_DURATION}Test'):
+        os.mkdir(f'data/test/{ticker}_{TRAIN_DURATION}Test')
     test_df = pd.read_csv('data/'+test_file, index_col=0).dropna()
     test_df['date_str'] = test_df['date'].values
     test_df.date = test_df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
@@ -72,28 +73,28 @@ def split_dataset(path = 'data/'):
             else:
                 test_date += dt.timedelta(days=1)
         testing = fetch_testing(test_df, testing_start=test_date.strftime('%Y-%m-%d'), duration=1, curr_date_set=date_set)
-        training.to_csv(f'data/training/{ticker}/training_{idx}.csv')
-        testing.to_csv(f'data/test/{ticker}/test_{idx}.csv')
+        training.to_csv(f'data/training/{ticker}_{TRAIN_DURATION}Train/training_{idx}.csv')
+        testing.to_csv(f'data/test/{ticker}_{TRAIN_DURATION}Test/test_{idx}.csv')
 
 
     """Append training data to different test period"""
-    for count, file in enumerate(files[11:]):
-        count += 11
-        print('-'*20, f'{file} - Count {count}', '-'*20)
-        try:
-            if file.split('.')[1] == 'csv' and file != test_file:
-                df = pd.read_csv(path+file, index_col=0)
-                df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
-                for idx, curr_date in enumerate(sorted_date_set):
-                    if idx % 10 == 0:
-                        print(f'{file} Done - {idx}')
-                    training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
-                    prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
-                    prev_training = prev_training.append(training, sort=False)
-                    prev_training.to_csv(f'data/training/{ticker}/training_{idx}.csv')
-        except Exception as e:
-            print(f'{e} in {file}')
-            continue
+    # for count, file in enumerate(files[11:]):
+    #     count += 11
+    #     print('-'*20, f'{file} - Count {count}', '-'*20)
+    #     try:
+    #         if file.split('.')[1] == 'csv' and file != test_file:
+    #             df = pd.read_csv(path+file, index_col=0)
+    #             df.date = df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
+    #             for idx, curr_date in enumerate(sorted_date_set):
+    #                 if idx % 10 == 0:
+    #                     print(f'{file} Done - {idx}')
+    #                 training = fetch_training(df, training_start=curr_date, duration=TRAIN_DURATION)
+    #                 prev_training = pd.read_csv(f'data/training/training_{idx}.csv', index_col=0)
+    #                 prev_training = prev_training.append(training, sort=False)
+    #                 prev_training.to_csv(f'data/training/{ticker}/training_{idx}.csv')
+    #     except Exception as e:
+    #         print(f'{e} in {file}')
+    #         continue
 
     """multi-processing the concat function"""
     # print(mp.cpu_count())

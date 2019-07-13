@@ -36,6 +36,6 @@ def plot(df, title:str):
     )
 
 if __name__ == '__main__':
-    df = pd.read_csv('linear_reg.csv')
+    df = pd.read_csv('result/linear/linear_reg.csv')
     reg_plot = plot(df, 'linear regression r-sqaure')
     reg_plot.render()
