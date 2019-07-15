@@ -19,6 +19,7 @@ from keras.layers.recurrent import LSTM
 import os
 import h5py
 import datetime as dt
+import multiprocessing as mp
 from statsmodels.api import OLS, add_constant
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -27,10 +28,16 @@ import keras
 from utility import *
 from numpy.random import seed
 # seed(10)
+import warnings
+warnings.filterwarnings("ignore")
 
 config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 8} )
 sess = tf.Session(config=config)
 keras.backend.set_session(sess)
+
+
+
+
 
 class Preprocess:
     def preprocess(self, df: pd.DataFrame, threshold: float = 0.0001, time_step=5, num_feature=8, normalize=True) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
@@ -51,7 +58,7 @@ class Preprocess:
                 df.loc[:, name] = (df[name] - df[name].mean()) / (df[name].max() - df[name].min())
 
         "Create a new feature - LOB imbalance"
-        df['imbalance'] = df['SP1'] * df['SV1'] - df['BV1'] * df['BP1']
+        df['imbalance'] = df['SP1'].values * df['SV1'].values - df['BV1'].values * df['BP1'].values
         df['imbalance'] = (df['imbalance'] - df['imbalance'].mean()) / (df['imbalance'].max() - df['imbalance'].min())
 
 
@@ -100,7 +107,7 @@ class NeuralNet(Preprocess):
         seq = Sequential()
         seq.add(Dense(units=64, input_dim=n_components, activation='relu'))
         seq.add(Dense(units=32, activation='relu'))
-        seq.add(Dense(units=1, activation='linear_252'))
+        seq.add(Dense(units=1, activation='linear_170'))
         seq.compile(loss='mean_squared_error', optimizer='adam')
         return seq
 
@@ -145,7 +152,7 @@ class NeuralNet(Preprocess):
 class Regressor(Preprocess):
     def __init__(self, train_data, test_data, num_feature=14, pca_flag=False, n_components=2):
         """
-        Regressor for linear_252 regression
+        Regressor for linear_170 regression
         :param df: input data
         :param train_interval: length of training period
         :param test_period: how many days to be tested
@@ -209,31 +216,66 @@ if __name__ == '__main__':
     1.Preprocess dataframe regarding to different time scale
     2.Build the regression model
     """
-    train_path = 'data/training/0050_28Train/'
-    test_path = 'data/test/0050_28Test/'
-    files = os.listdir(train_path)
+    # train_path = 'data/training/0050_28Train/'
+    # test_path = 'data/test/0050_28Test/'
+    # files = os.listdir(train_path)
+    #
+    # for n_components in range(1,40,5):
+    #     record = []
+    #     print(f'Current number of component - {n_components}')
+    #     for train_file in files:
+    #         if train_file[-3:] == 'csv':
+    #             try:
+    #                 train = pd.read_csv(train_path+train_file, index_col=0)
+    #                 idx = train_file.split('_')[1].split('.')[0]
+    #                 test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
+    #                 reg = Regressor(train_data=train, test_data=test, pca_flag=True, n_components=n_components)
+    #                 r2 = reg.run_regr()
+    #                 record.append([test.date[0], r2, reg.pca_ratio])
+    #             except:
+    #                 continue
+    #     record = pd.DataFrame(record, columns=['date', 'r2',  'pca_ratio'])
+    #     record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
+    #     record.sort_index(inplace=True)
+    #     record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
+        # record.to_csv(f'result/linear_20/linear_reg.csv', index=False)
 
-    for n_components in range(1,40,5):
-        record = []
-        print(f'Current number of component - {n_components}')
-        for train_file in files:
-            if train_file[-3:] == 'csv':
-                try:
-                    train = pd.read_csv(train_path+train_file, index_col=0)
-                    idx = train_file.split('_')[1].split('.')[0]
-                    test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
-                    reg = Regressor(train_data=train, test_data=test, pca_flag=True, n_components=n_components)
-                    r2 = reg.run_regr()
-                    record.append([test.date[0], r2, reg.pca_ratio])
-                except:
-                    continue
-        record = pd.DataFrame(record, columns=['date', 'r2',  'pca_ratio'])
+    # TRAIN_DURATION = 170
+
+    file = 'data/step1_0050.csv'
+    df = pd.read_csv(file, index_col=0)
+    df['date_label'] = df.groupby(['date']).ngroup()
+    n_components = 1
+
+
+    def mp_reg(epoch):
+        train_start = epoch  # 0
+        train_end = epoch + TRAIN_DURATION - 1  # 179
+        test_end = epoch + TRAIN_DURATION  # 180
+
+        train_data = df.loc[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
+        train_data.drop('date_label', axis=1, inplace=True)
+
+        test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > train_end)]
+        test_data.drop('date_label', axis=1, inplace=True)
+
+        reg = Regressor(train_data=train_data, test_data=test_data, pca_flag=False, n_components=n_components)
+        r2 = reg.run_regr()
+        return test_data.date[0], r2
+
+    for idx in range(10, 200, 10):
+
+        TRAIN_DURATION = idx
+
+        pool = mp.Pool(mp.cpu_count())
+        record = pool.map(mp_reg, range(0, df.date_label[-1]-TRAIN_DURATION))
+        pool.close()
+
+        record = pd.DataFrame(record, columns=['date', 'r2'])
         record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
         record.sort_index(inplace=True)
-        record.to_csv(f'result/linear_28//linear_reg_pca-{n_components}_without_norm.csv', index=False)
-        # record.to_csv(f'result/linear_28/linear_reg.csv', index=False)
-
-
+        # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
+        record.to_csv(f'result/linear_no_pca/linear_reg_{TRAIN_DURATION}.csv', index=False)
 
 
 

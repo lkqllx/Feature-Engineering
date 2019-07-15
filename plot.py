@@ -280,14 +280,14 @@ def plot_compare_y(df, df2, title:str):
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('result/linear_252/linear_reg.csv')
-    ori_reg_plot = plot_one_y(df, 'linear_252 regression r-sqaure of original data')
+    df = pd.read_csv('result/linear_170/linear_reg.csv')
+    ori_reg_plot = plot_one_y(df, 'linear_170 regression r-sqaure of original data')
 
-    files = os.listdir('result/linear_252/')
+    files = os.listdir('result/linear_170/')
     name = []
     for file in files:
         if 'normed' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_252/' + file)
+            curr_df = pd.read_csv('result/linear_170/' + file)
             try:
                 df = pd.concat([df, curr_df['r2']], axis=1)
                 name.append(file.split('.')[0].split('_')[-2]+'-w norm')
@@ -300,13 +300,13 @@ if __name__ == '__main__':
     sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
     name = ['date'] + [item[0] for item in sort_dict]
     df = df[name]
-    normed_pca_plot = plot_multi_y(df, 'linear_252 regression r-sqaure after normed pca')
+    normed_pca_plot = plot_multi_y(df, 'linear_170 regression r-sqaure after normed pca')
 
-    files = os.listdir('result/linear_252/')
+    files = os.listdir('result/linear_170/')
     name = []
     for file in files:
         if 'normed' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_252/' + file)
+            curr_df = pd.read_csv('result/linear_170/' + file)
             try:
                 df_pca = pd.concat([df_pca, curr_df['pca_ratio']], axis=1)
                 name.append(file.split('.')[0].split('_')[-2]+'-w norm')
@@ -322,11 +322,11 @@ if __name__ == '__main__':
     pca_plot_normed = plot_multi_y(df_pca, 'normed pca eigenvalue ratio')
 
 
-    files = os.listdir('result/linear_252/')
+    files = os.listdir('result/linear_170/')
     name = []
     for file in files:
         if 'without' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_252/' + file)
+            curr_df = pd.read_csv('result/linear_170/' + file)
             try:
                 df2 = pd.concat([df2, curr_df['r2']], axis=1)
                 name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
@@ -339,13 +339,13 @@ if __name__ == '__main__':
     sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
     name = ['date'] + [item[0] for item in sort_dict]
     df2 = df2[name]
-    without_norm_pca_plot = plot_multi_y(df2, 'linear_252 regression r-sqaure after pca without norm')
+    without_norm_pca_plot = plot_multi_y(df2, 'linear_170 regression r-sqaure after pca without norm')
 
-    files = os.listdir('result/linear_252/')
+    files = os.listdir('result/linear_170/')
     name = []
     for file in files:
         if 'without' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_252/' + file)
+            curr_df = pd.read_csv('result/linear_170/' + file)
             try:
                 df_pca2 = pd.concat([df_pca2, curr_df['pca_ratio']], axis=1)
                 name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
@@ -360,11 +360,11 @@ if __name__ == '__main__':
     df_pca2 = df_pca2[name]
     pca_plot_without_norm = plot_multi_y(df_pca2, 'pca without normed eigenvalue ratio')
 
-    files = os.listdir('result/linear_252/')
+    files = os.listdir('result/linear_170/')
     name = []
     for file in files:
         if 'normed' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_252/' + file)
+            curr_df = pd.read_csv('result/linear_170/' + file)
             try:
                 df = pd.concat([df, curr_df['r2']], axis=1)
                 name.append(file.split('.')[0].split('_')[-2]+'-w norm')
@@ -377,7 +377,7 @@ if __name__ == '__main__':
     sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
     name = ['date'] + [item[0] for item in sort_dict]
     df = df[name]
-    normed_pca_plot = plot_multi_y(df, 'linear_252 regression r-sqaure after normed pca')
+    normed_pca_plot = plot_multi_y(df, 'linear_170 regression r-sqaure after normed pca')
     compare_plot = plot_compare_y(df, df2, 'comparison between pca w/ and w/o norm')
 
     Page().add(*[ori_reg_plot, normed_pca_plot, pca_plot_normed, without_norm_pca_plot, pca_plot_without_norm, compare_plot]).render(path='render_252.html')
