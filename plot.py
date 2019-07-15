@@ -380,4 +380,4 @@ if __name__ == '__main__':
     normed_pca_plot = plot_multi_y(df, 'linear_252 regression r-sqaure after normed pca')
     compare_plot = plot_compare_y(df, df2, 'comparison between pca w/ and w/o norm')
 
-    Page().add(*[ori_reg_plot, normed_pca_plot, pca_plot_normed, without_norm_pca_plot, pca_plot_without_norm, compare_plot]).render()
+    Page().add(*[ori_reg_plot, normed_pca_plot, pca_plot_normed, without_norm_pca_plot, pca_plot_without_norm, compare_plot]).render(path='render_252.html')
