@@ -15,6 +15,7 @@ from keras.layers.core import Flatten, Dense
 from keras.layers.convolutional import Conv3D
 from keras.layers.convolutional_recurrent import ConvLSTM2D
 from keras.layers.normalization import BatchNormalization
+from tensorflow.python.keras.wrappers.scikit_learn import KerasRegressor
 from keras.layers.recurrent import LSTM
 import os
 import h5py
@@ -103,9 +104,9 @@ class NeuralNet(Preprocess):
         seq.compile(loss='categorical_crossentropy', optimizer='adadelta', metrics=['categorical_accuracy'])
         return seq
 
-    def create_reg_model(self, n_components) -> Sequential:
+    def create_reg_model(self, ) -> Sequential:
         seq = Sequential()
-        seq.add(Dense(units=64, input_dim=n_components, activation='relu'))
+        seq.add(Dense(units=64, input_dim=self.train_x.shape[1], activation='relu'))
         seq.add(Dense(units=32, activation='relu'))
         seq.add(Dense(units=1, activation='linear_170'))
         seq.compile(loss='mean_squared_error', optimizer='adam')
@@ -137,9 +138,9 @@ class NeuralNet(Preprocess):
         self.train_x = scaler.fit_transform(self.train_x)
         self.test_x = scaler.transform(self.test_x)
 
-        self.nn = self.create_reg_model(self.train_x.shape[1])
-        self.nn.fit(self.train_x, self.train_y['Y_M_1'],
-                epochs=self.epoch, validation_split=0.05, shuffle=True, verbose=2, batch_size=self.batch)
+        self.nn = KerasRegressor(build_fn=self.create_reg_model, epochs=self.epoch, batch_size=self.batch,
+                validation_split=0.05, shuffle=True, verbose=2)
+        self.nn.fit(self.train_x, self.train_y['Y_M_1'])
 
     def predict_reg(self):
         y_pred = self.nn.predict(self.test_x)
@@ -263,7 +264,7 @@ if __name__ == '__main__':
         r2 = reg.run_regr()
         return test_data.date[0], r2
 
-    for idx in range(10, 200, 10):
+    for idx in range(1, 200, 30):
 
         TRAIN_DURATION = idx
 

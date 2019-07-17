@@ -106,8 +106,10 @@ def plot_multi_y(df, title:str):
             label_opts=opts.LabelOpts(is_show=False),
             linestyle_opts=opts.LineStyleOpts(width=2),
             markline_opts=opts.MarkLineOpts(data=[opts.MarkLineItem(type_="average")]),
+
         )
             .set_global_opts(
+            datazoom_opts=opts.DataZoomOpts(),
             legend_opts=opts.LegendOpts(pos_bottom="0%", pos_right='25%'),
             title_opts=opts.TitleOpts(title=title.upper(), pos_left='0%', ),
             tooltip_opts=opts.TooltipOpts(trigger="axis", axis_pointer_type="cross"),
@@ -280,104 +282,130 @@ def plot_compare_y(df, df2, title:str):
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('result/linear_170/linear_reg.csv')
-    ori_reg_plot = plot_one_y(df, 'linear_170 regression r-sqaure of original data')
+    # df = pd.read_csv('result/linear_170/linear_reg.csv')
+    # ori_reg_plot = plot_one_y(df, 'linear_170 regression r-sqaure of original data')
+    #
+    # files = os.listdir('result/linear_170/')
+    # name = []
+    # for file in files:
+    #     if 'normed' in file.split('.')[0].split('_'):
+    #         curr_df = pd.read_csv('result/linear_170/' + file)
+    #         try:
+    #             df = pd.concat([df, curr_df['r2']], axis=1)
+    #             name.append(file.split('.')[0].split('_')[-2]+'-w norm')
+    #         except:
+    #             df = curr_df[['date', 'r2']]
+    #             name.append('date')
+    #             name.append(file.split('.')[0].split('_')[-2]+'-w/ norm')
+    # df.columns = name
+    # sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
+    # sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
+    # name = ['date'] + [item[0] for item in sort_dict]
+    # df = df[name]
+    # normed_pca_plot = plot_multi_y(df, 'linear_170 regression r-sqaure after normed pca')
+    #
+    # files = os.listdir('result/linear_170/')
+    # name = []
+    # for file in files:
+    #     if 'normed' in file.split('.')[0].split('_'):
+    #         curr_df = pd.read_csv('result/linear_170/' + file)
+    #         try:
+    #             df_pca = pd.concat([df_pca, curr_df['pca_ratio']], axis=1)
+    #             name.append(file.split('.')[0].split('_')[-2]+'-w norm')
+    #         except:
+    #             df_pca = curr_df[['date', 'pca_ratio']]
+    #             name.append('date')
+    #             name.append(file.split('.')[0].split('_')[-2]+'-w/ norm')
+    # df_pca.columns = name
+    # sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
+    # sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
+    # name = ['date'] + [item[0] for item in sort_dict]
+    # df_pca = df_pca[name]
+    # pca_plot_normed = plot_multi_y(df_pca, 'normed pca eigenvalue ratio')
+    #
+    #
+    # files = os.listdir('result/linear_170/')
+    # name = []
+    # for file in files:
+    #     if 'without' in file.split('.')[0].split('_'):
+    #         curr_df = pd.read_csv('result/linear_170/' + file)
+    #         try:
+    #             df2 = pd.concat([df2, curr_df['r2']], axis=1)
+    #             name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
+    #         except:
+    #             df2 = curr_df[['date', 'r2']]
+    #             name.append('date')
+    #             name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
+    # df2.columns = name
+    # sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
+    # sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
+    # name = ['date'] + [item[0] for item in sort_dict]
+    # df2 = df2[name]
+    # without_norm_pca_plot = plot_multi_y(df2, 'linear_170 regression r-sqaure after pca without norm')
+    #
+    # files = os.listdir('result/linear_170/')
+    # name = []
+    # for file in files:
+    #     if 'without' in file.split('.')[0].split('_'):
+    #         curr_df = pd.read_csv('result/linear_170/' + file)
+    #         try:
+    #             df_pca2 = pd.concat([df_pca2, curr_df['pca_ratio']], axis=1)
+    #             name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
+    #         except:
+    #             df_pca2 = curr_df[['date', 'pca_ratio']]
+    #             name.append('date')
+    #             name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
+    # df_pca2.columns = name
+    # sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
+    # sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
+    # name = ['date'] + [item[0] for item in sort_dict]
+    # df_pca2 = df_pca2[name]
+    # pca_plot_without_norm = plot_multi_y(df_pca2, 'pca without normed eigenvalue ratio')
+    #
+    # files = os.listdir('result/linear_170/')
+    # name = []
+    # for file in files:
+    #     if 'normed' in file.split('.')[0].split('_'):
+    #         curr_df = pd.read_csv('result/linear_170/' + file)
+    #         try:
+    #             df = pd.concat([df, curr_df['r2']], axis=1)
+    #             name.append(file.split('.')[0].split('_')[-2]+'-w norm')
+    #         except:
+    #             df = curr_df[['date', 'r2']]
+    #             name.append('date')
+    #             name.append(file.split('.')[0].split('_')[-2]+'-w/ norm')
+    # df.columns = name
+    # sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
+    # sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
+    # name = ['date'] + [item[0] for item in sort_dict]
+    # df = df[name]
+    # normed_pca_plot = plot_multi_y(df, 'linear_170 regression r-sqaure after normed pca')
+    # compare_plot = plot_compare_y(df, df2, 'comparison between pca w/ and w/o norm')
 
-    files = os.listdir('result/linear_170/')
-    name = []
-    for file in files:
-        if 'normed' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_170/' + file)
-            try:
-                df = pd.concat([df, curr_df['r2']], axis=1)
-                name.append(file.split('.')[0].split('_')[-2]+'-w norm')
-            except:
-                df = curr_df[['date', 'r2']]
-                name.append('date')
-                name.append(file.split('.')[0].split('_')[-2]+'-w/ norm')
-    df.columns = name
-    sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
-    sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
-    name = ['date'] + [item[0] for item in sort_dict]
-    df = df[name]
-    normed_pca_plot = plot_multi_y(df, 'linear_170 regression r-sqaure after normed pca')
-
-    files = os.listdir('result/linear_170/')
-    name = []
-    for file in files:
-        if 'normed' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_170/' + file)
-            try:
-                df_pca = pd.concat([df_pca, curr_df['pca_ratio']], axis=1)
-                name.append(file.split('.')[0].split('_')[-2]+'-w norm')
-            except:
-                df_pca = curr_df[['date', 'pca_ratio']]
-                name.append('date')
-                name.append(file.split('.')[0].split('_')[-2]+'-w/ norm')
-    df_pca.columns = name
-    sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
-    sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
-    name = ['date'] + [item[0] for item in sort_dict]
-    df_pca = df_pca[name]
-    pca_plot_normed = plot_multi_y(df_pca, 'normed pca eigenvalue ratio')
+    # Page().add(*[ori_reg_plot, normed_pca_plot, pca_plot_normed, without_norm_pca_plot, pca_plot_without_norm, compare_plot]).render(path='render_252.html')
 
 
-    files = os.listdir('result/linear_170/')
-    name = []
-    for file in files:
-        if 'without' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_170/' + file)
-            try:
-                df2 = pd.concat([df2, curr_df['r2']], axis=1)
-                name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
-            except:
-                df2 = curr_df[['date', 'r2']]
-                name.append('date')
-                name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
-    df2.columns = name
-    sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
-    sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
-    name = ['date'] + [item[0] for item in sort_dict]
-    df2 = df2[name]
-    without_norm_pca_plot = plot_multi_y(df2, 'linear_170 regression r-sqaure after pca without norm')
-
-    files = os.listdir('result/linear_170/')
-    name = []
-    for file in files:
-        if 'without' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_170/' + file)
-            try:
-                df_pca2 = pd.concat([df_pca2, curr_df['pca_ratio']], axis=1)
-                name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
-            except:
-                df_pca2 = curr_df[['date', 'pca_ratio']]
-                name.append('date')
-                name.append(file.split('.')[0].split('_')[-3]+'-w/o norm')
-    df_pca2.columns = name
-    sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
-    sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
-    name = ['date'] + [item[0] for item in sort_dict]
-    df_pca2 = df_pca2[name]
-    pca_plot_without_norm = plot_multi_y(df_pca2, 'pca without normed eigenvalue ratio')
-
-    files = os.listdir('result/linear_170/')
-    name = []
-    for file in files:
-        if 'normed' in file.split('.')[0].split('_'):
-            curr_df = pd.read_csv('result/linear_170/' + file)
-            try:
-                df = pd.concat([df, curr_df['r2']], axis=1)
-                name.append(file.split('.')[0].split('_')[-2]+'-w norm')
-            except:
-                df = curr_df[['date', 'r2']]
-                name.append('date')
-                name.append(file.split('.')[0].split('_')[-2]+'-w/ norm')
-    df.columns = name
-    sort_dict = {key:key.split('-')[1] for key in name if key != 'date'}
-    sort_dict = sorted(sort_dict.items(), key=lambda x: int(x[1]))
-    name = ['date'] + [item[0] for item in sort_dict]
-    df = df[name]
-    normed_pca_plot = plot_multi_y(df, 'linear_170 regression r-sqaure after normed pca')
-    compare_plot = plot_compare_y(df, df2, 'comparison between pca w/ and w/o norm')
-
-    Page().add(*[ori_reg_plot, normed_pca_plot, pca_plot_normed, without_norm_pca_plot, pca_plot_without_norm, compare_plot]).render(path='render_252.html')
+    '''
+    ----------------------------------------------------------------------------------------------------------
+    PLOT OF DIFFERENT PERIOD
+    ----------------------------------------------------------------------------------------------------------
+    '''
+    files = os.listdir('result/linear_no_pca')
+    sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
+    sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
+    # sort_files = [file for file, _ in sort_files]
+    for file, training_period in sort_files:
+        curr_df = pd.read_csv('result/linear_no_pca/'+file, index_col=0)
+        curr_df.columns = [training_period]
+        try:
+            output = pd.concat([output, curr_df], axis=1, sort=True)
+        except:
+            output = curr_df
+    # output[output['10'] == output['10'].min()] = 1
+    # output[output['20'] == output['20'].min()] = 1
+    # output[output['50'] == output['50'].min()] = 1
+    # output[output['70'] == output['70'].min()] = 1
+    output.dropna(inplace=True)
+    output['date'] = output.index.values
+    reg_plot = plot_multi_y(output, 'regression r-sqaure with different training length')
+    reg_plot.render()
