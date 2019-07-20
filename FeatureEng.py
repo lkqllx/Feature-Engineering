@@ -243,7 +243,7 @@ if __name__ == '__main__':
 
     # TRAIN_DURATION = 170
 
-    file = 'data/step1_0050.csv'
+    file = 'data/step1_2330.csv'
     df = pd.read_csv(file, index_col=0)
     df['date_label'] = df.groupby(['date']).ngroup()
     n_components = 1
@@ -263,7 +263,7 @@ if __name__ == '__main__':
         r2 = reg.run_regr()
         return test_data.date[0], r2
 
-    for idx in range(1, 200, 30):
+    for idx in range(10, 200, 10):
 
         TRAIN_DURATION = idx
 
@@ -275,7 +275,7 @@ if __name__ == '__main__':
         record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
         record.sort_index(inplace=True)
         # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
-        record.to_csv(f'result/linear_no_pca/linear_reg_{TRAIN_DURATION}.csv', index=False)
+        record.to_csv(f'result/linear_no_pca_2330/linear_reg_{TRAIN_DURATION}.csv', index=False)
 
 
 

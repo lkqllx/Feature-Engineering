@@ -475,6 +475,8 @@ if __name__ == '__main__':
     output_2330['date'] = output_2330.index.values
     reg_plot_2330 = plot_multi_y(output_2330, 'regression r-sqaure with different training length')
 
+    del output_2330
+    del output_50
 
 
     files = os.listdir('result/linear_no_pca_2330')
@@ -499,12 +501,16 @@ if __name__ == '__main__':
         except:
             output_50 = curr_df
 
+    b= output_50.columns.values.tolist()
+    a = np.array([output_50.columns.values.tolist(),output_50.values.tolist(),output_2330.values.tolist()])
+    average_df = pd.DataFrame(columns=['Training Period', 'R_Square 0050', 'R_Square 2330'])
     output_2330 = output_2330.mean()
     output_50 = output_50.mean()
-    average_df = pd.DataFrame(columns=['Training Period', 'R_Square 0050', 'R_Square 2330'])
-    average_df.loc['Training Period'] = output_50.columns
-    average_df.loc['R_Square 0050'] = output_50.values.tolist()
-    average_df.loc['R_Square 2330'] = output_2330.values.tolist()
+
+    #
+    # average_df.loc['Training Period'] = output_50.columns
+    # average_df.loc['R_Square 0050'] = output_50.values.tolist()
+    # average_df.loc['R_Square 2330'] = output_2330.values.tolist()
     mean_plot = plot_two_y(average_df, 'Average r-square of 0050 and 2330')
 
     Page().add(*[reg_plot_50, reg_plot_2330, mean_plot])
