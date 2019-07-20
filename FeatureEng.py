@@ -248,7 +248,6 @@ if __name__ == '__main__':
     df['date_label'] = df.groupby(['date']).ngroup()
     n_components = 1
 
-
     def mp_reg(epoch):
         train_start = epoch  # 0
         train_end = epoch + TRAIN_DURATION - 1  # 179

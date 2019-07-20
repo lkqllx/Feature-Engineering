@@ -20,7 +20,50 @@ def plot_one_y(df, title:str):
             markline_opts=opts.MarkLineOpts(data=[opts.MarkLineItem(type_="average")]),
         )
             .set_global_opts(
+            datazoom_opts=opts.DataZoomOpts(),
             legend_opts=opts.LegendOpts(pos_bottom="0%", pos_right='45%'),
+            title_opts=opts.TitleOpts(title=title.upper(), pos_left='0%', ),
+            tooltip_opts=opts.TooltipOpts(trigger="axis", axis_pointer_type="cross"),
+            toolbox_opts=opts.ToolboxOpts(is_show=True),
+            xaxis_opts=opts.AxisOpts(boundary_gap=False),
+            yaxis_opts=opts.AxisOpts(
+                axislabel_opts=opts.LabelOpts(formatter="{value}"),
+                splitline_opts=opts.SplitLineOpts(is_show=True),
+            ),
+        )
+            .set_series_opts(
+            markpoint_opts=opts.MarkPointOpts(data=[opts.MarkPointItem(type_='max', name='Max'),
+                                                    opts.MarkPointItem(type_='min', name='Min')]),
+        )
+    )
+
+
+def plot_two_y(df, title:str):
+    df.index = pd.to_datetime(df['date'])
+    df.sort_index(inplace=True)
+    df = df.drop(['date'], axis=1)
+    return (
+        Line(init_opts=opts.InitOpts(width="1200px", height="400px"))
+            .add_xaxis(xaxis_data=df.index.strftime('%Y-%m-%d').values.tolist())
+            .add_yaxis(
+            series_name=df.columns[0],
+            y_axis=np.round(df.values[:,0], 2).tolist(),
+            is_smooth=True,
+            label_opts=opts.LabelOpts(is_show=False),
+            linestyle_opts=opts.LineStyleOpts(width=2),
+            markline_opts=opts.MarkLineOpts(data=[opts.MarkLineItem(type_="average")]),
+        )
+            .add_yaxis(
+            series_name=df.columns[1],
+            y_axis=np.round(df.values[:, 1], 2).tolist(),
+            is_smooth=True,
+            label_opts=opts.LabelOpts(is_show=False),
+            linestyle_opts=opts.LineStyleOpts(width=2),
+            markline_opts=opts.MarkLineOpts(data=[opts.MarkLineItem(type_="average")]),
+        )
+            .set_global_opts(
+            datazoom_opts=opts.DataZoomOpts(),
+            legend_opts=opts.LegendOpts(pos_bottom="0%", pos_right='25%'),
             title_opts=opts.TitleOpts(title=title.upper(), pos_left='0%', ),
             tooltip_opts=opts.TooltipOpts(trigger="axis", axis_pointer_type="cross"),
             toolbox_opts=opts.ToolboxOpts(is_show=True),
@@ -106,7 +149,14 @@ def plot_multi_y(df, title:str):
             label_opts=opts.LabelOpts(is_show=False),
             linestyle_opts=opts.LineStyleOpts(width=2),
             markline_opts=opts.MarkLineOpts(data=[opts.MarkLineItem(type_="average")]),
-
+        )
+            .add_yaxis(
+            series_name=df.columns[8],
+            y_axis=np.round(df.values[:, 8], 2).tolist(),
+            is_smooth=True,
+            label_opts=opts.LabelOpts(is_show=False),
+            linestyle_opts=opts.LineStyleOpts(width=2),
+            markline_opts=opts.MarkLineOpts(data=[opts.MarkLineItem(type_="average")]),
         )
             .set_global_opts(
             datazoom_opts=opts.DataZoomOpts(),
@@ -390,7 +440,9 @@ if __name__ == '__main__':
     PLOT OF DIFFERENT PERIOD
     ----------------------------------------------------------------------------------------------------------
     '''
+    idx_list = [10, 30, 50, 70, 90, 110, 130, 150, 170, 190]
     files = os.listdir('result/linear_no_pca')
+    files = [file for file in files if int(file.split('.')[0].split('_')[2]) in idx_list]
     sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
     sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
     # sort_files = [file for file, _ in sort_files]
@@ -398,14 +450,61 @@ if __name__ == '__main__':
         curr_df = pd.read_csv('result/linear_no_pca/'+file, index_col=0)
         curr_df.columns = [training_period]
         try:
-            output = pd.concat([output, curr_df], axis=1, sort=True)
+            output_50 = pd.concat([output_50, curr_df], axis=1, sort=True)
         except:
-            output = curr_df
-    # output[output['10'] == output['10'].min()] = 1
-    # output[output['20'] == output['20'].min()] = 1
-    # output[output['50'] == output['50'].min()] = 1
-    # output[output['70'] == output['70'].min()] = 1
-    output.dropna(inplace=True)
-    output['date'] = output.index.values
-    reg_plot = plot_multi_y(output, 'regression r-sqaure with different training length')
-    reg_plot.render()
+            output_50 = curr_df
+    output_50.dropna(inplace=True)
+    output_50['date'] = output_50.index.values
+    reg_plot_50 = plot_multi_y(output_50, 'regression r-sqaure with different training length')
+
+
+    idx_list = [10, 30, 50, 70, 90, 110, 130, 150, 170, 190]
+    files = os.listdir('result/linear_no_pca_2330')
+    files = [file for file in files if int(file.split('.')[0].split('_')[2]) in idx_list]
+    sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
+    sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
+    # sort_files = [file for file, _ in sort_files]
+    for file, training_period in sort_files:
+        curr_df = pd.read_csv('result/linear_no_pca_2330/'+file, index_col=0)
+        curr_df.columns = [training_period]
+        try:
+            output_2330 = pd.concat([output_2330, curr_df], axis=1, sort=True)
+        except:
+            output_2330 = curr_df
+    output_2330.dropna(inplace=True)
+    output_2330['date'] = output_2330.index.values
+    reg_plot_2330 = plot_multi_y(output_2330, 'regression r-sqaure with different training length')
+
+
+
+    files = os.listdir('result/linear_no_pca_2330')
+    sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
+    sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
+    for file, training_period in sort_files:
+        curr_df = pd.read_csv('result/linear_no_pca_2330/'+file, index_col=0)
+        curr_df.columns = [training_period]
+        try:
+            output_2330 = pd.concat([output_2330, curr_df], axis=1, sort=True)
+        except:
+            output_2330 = curr_df
+
+    files = os.listdir('result/linear_no_pca_2330')
+    sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
+    sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
+    for file, training_period in sort_files:
+        curr_df = pd.read_csv('result/linear_no_pca_2330/'+file, index_col=0)
+        curr_df.columns = [training_period]
+        try:
+            output_50 = pd.concat([output_50, curr_df], axis=1, sort=True)
+        except:
+            output_50 = curr_df
+
+    output_2330 = output_2330.mean()
+    output_50 = output_50.mean()
+    average_df = pd.DataFrame(columns=['Training Period', 'R_Square 0050', 'R_Square 2330'])
+    average_df.loc['Training Period'] = output_50.columns
+    average_df.loc['R_Square 0050'] = output_50.values.tolist()
+    average_df.loc['R_Square 2330'] = output_2330.values.tolist()
+    mean_plot = plot_two_y(average_df, 'Average r-square of 0050 and 2330')
+
+    Page().add(*[reg_plot_50, reg_plot_2330, mean_plot])
