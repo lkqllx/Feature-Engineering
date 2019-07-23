@@ -243,39 +243,48 @@ if __name__ == '__main__':
 
     # TRAIN_DURATION = 170
 
-    file = 'data/step1_2330.csv'
-    df = pd.read_csv(file, index_col=0)
-    df['date_label'] = df.groupby(['date']).ngroup()
-    n_components = 1
+    files = os.listdir('data/')
+    files = [(file, int(file.split('.')[0].split('_')[1])) for file in files if file.split('.')[1] == 'csv']
+    sort_files = sorted(files, key=lambda x:x[1])
+    sort_files = [file for file in sort_files[-15:]]
 
-    def mp_reg(epoch):
-        train_start = epoch  # 0
-        train_end = epoch + TRAIN_DURATION - 1  # 179
-        test_end = epoch + TRAIN_DURATION  # 180
+    for file, ticker in sort_files:
+        df = pd.read_csv('data/'+file, index_col=0)
+        df['date_label'] = df.groupby(['date']).ngroup()
+        n_components = 1
 
-        train_data = df.loc[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
-        train_data.drop('date_label', axis=1, inplace=True)
+        def mp_reg(epoch):
+            train_start = epoch  # 0
+            train_end = epoch + TRAIN_DURATION - 1  # 179
+            test_end = epoch + TRAIN_DURATION  # 180
 
-        test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > train_end)]
-        test_data.drop('date_label', axis=1, inplace=True)
+            train_data = df.loc[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
+            train_data.drop('date_label', axis=1, inplace=True)
 
-        reg = Regressor(train_data=train_data, test_data=test_data, pca_flag=False, n_components=n_components)
-        r2 = reg.run_regr()
-        return test_data.date[0], r2
+            test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > train_end)]
+            test_data.drop('date_label', axis=1, inplace=True)
 
-    for idx in range(10, 200, 10):
+            reg = Regressor(train_data=train_data, test_data=test_data, pca_flag=False, n_components=n_components)
+            r2 = reg.run_regr()
+            return test_data.date[0], r2
 
-        TRAIN_DURATION = idx
+        for idx in range(5, 200, 5):
 
-        pool = mp.Pool(mp.cpu_count())
-        record = pool.map(mp_reg, range(0, df.date_label[-1]-TRAIN_DURATION))
-        pool.close()
+            TRAIN_DURATION = idx
 
-        record = pd.DataFrame(record, columns=['date', 'r2'])
-        record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
-        record.sort_index(inplace=True)
-        # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
-        record.to_csv(f'result/linear_no_pca_2330/linear_reg_{TRAIN_DURATION}.csv', index=False)
+            pool = mp.Pool(mp.cpu_count())
+            record = pool.map(mp_reg, range(0, df.date_label[-1]-TRAIN_DURATION))
+            pool.close()
+
+            record = pd.DataFrame(record, columns=['date', 'r2'])
+            record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
+            record.sort_index(inplace=True)
+            # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
+            try:
+                record.to_csv(f'result/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+            except:
+                os.mkdir(f'result/linear_no_pca_{ticker}')
+                record.to_csv(f'result/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
 
 
 
