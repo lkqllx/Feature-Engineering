@@ -260,7 +260,7 @@ if __name__ == '__main__':
     files = [file for file in files if os.path.isfile('data/'+file)]
     files = [(file, int(file.split('.')[0].split('_')[1])) for file in files if file.split('.')[1] == 'csv' ]
     sort_files = sorted(files, key=lambda x:x[1])
-    sort_files = [file for file in sort_files[-10:]]
+    sort_files = [file for file in sort_files[1:] if file[1] != 2412]
 
     for file, ticker in sort_files:
         print(f'Doing - {ticker}')

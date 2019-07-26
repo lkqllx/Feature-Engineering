@@ -332,8 +332,8 @@ def plot_compare_y(df, df2, title:str):
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('result/linear_170/linear_reg.csv')
-    ori_reg_plot = plot_one_y(df, 'linear_170 regression r-sqaure of original data')
+    # df = pd.read_csv('result/linear_170/linear_reg.csv')
+    # ori_reg_plot = plot_one_y(df, 'linear_170 regression r-sqaure of original data')
 
     # files = os.listdir('result/linear_170/')
     # name = []
@@ -440,43 +440,42 @@ if __name__ == '__main__':
     PLOT OF DIFFERENT PERIOD
     ----------------------------------------------------------------------------------------------------------
     '''
-    idx_list = [10, 30, 50, 70, 90, 110, 130, 150, 170]
-    files = os.listdir('result/linear_no_pca')
-    files = [file for file in files if int(file.split('.')[0].split('_')[2]) in idx_list]
-    sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
-    sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
-    # sort_files = [file for file, _ in sort_files]
-    for file, training_period in sort_files:
-        curr_df = pd.read_csv('result/linear_no_pca/'+file, index_col=0)
-        curr_df.columns = [training_period]
-        try:
-            output_50 = pd.concat([output_50, curr_df], axis=1, sort=True)
-        except:
-            output_50 = curr_df
-    output_50.dropna(inplace=True)
-    output_50['date'] = output_50.index.values
-    reg_plot_50 = plot_multi_y(output_50, '0050 regression r-sqaure with different training length')
+    # idx_list = [10, 30, 50, 70, 90, 110, 130, 150, 170]
+    # files = os.listdir('result/linear_no_pca')
+    # files = [file for file in files if int(file.split('.')[0].split('_')[2]) in idx_list]
+    # sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
+    # sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
+    # # sort_files = [file for file, _ in sort_files]
+    # for file, training_period in sort_files:
+    #     curr_df = pd.read_csv('result/linear_no_pca/'+file, index_col=0)
+    #     curr_df.columns = [training_period]
+    #     try:
+    #         output_50 = pd.concat([output_50, curr_df], axis=1, sort=True)
+    #     except:
+    #         output_50 = curr_df
+    # output_50.dropna(inplace=True)
+    # output_50['date'] = output_50.index.values
+    # reg_plot_50 = plot_multi_y(output_50, '0050 regression r-sqaure with different training length')
+    #
+    # idx_list = [10, 30, 50, 70, 90, 110, 130, 150, 170]
+    # files = os.listdir('result/linear_no_pca_2330')
+    # files = [file for file in files if int(file.split('.')[0].split('_')[2]) in idx_list]
+    # sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
+    # sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
+    # # sort_files = [file for file, _ in sort_files]
+    # for file, training_period in sort_files:
+    #     curr_df = pd.read_csv('result/linear_no_pca_2330/'+file, index_col=0)
+    #     curr_df.columns = [training_period]
+    #     try:
+    #         output_2330 = pd.concat([output_2330, curr_df], axis=1, sort=True)
+    #     except:
+    #         output_2330 = curr_df
+    # output_2330.dropna(inplace=True)
+    # output_2330['date'] = output_2330.index.values
+    # reg_plot_2330 = plot_multi_y(output_2330, '2330 regression r-sqaure with different training length')
 
-    idx_list = [10, 30, 50, 70, 90, 110, 130, 150, 170]
-    files = os.listdir('result/linear_no_pca_2330')
-    files = [file for file in files if int(file.split('.')[0].split('_')[2]) in idx_list]
-    sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
-    sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
-    # sort_files = [file for file, _ in sort_files]
-    for file, training_period in sort_files:
-        curr_df = pd.read_csv('result/linear_no_pca_2330/'+file, index_col=0)
-        curr_df.columns = [training_period]
-        try:
-            output_2330 = pd.concat([output_2330, curr_df], axis=1, sort=True)
-        except:
-            output_2330 = curr_df
-    output_2330.dropna(inplace=True)
-    output_2330['date'] = output_2330.index.values
-    reg_plot_2330 = plot_multi_y(output_2330, '2330 regression r-sqaure with different training length')
-
-    del output_2330
-    del output_50
-
+    # del output_2330
+    # del output_50
 
     files = os.listdir('result/linear_no_pca_2330')
     sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
