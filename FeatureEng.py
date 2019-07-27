@@ -94,9 +94,8 @@ class Preprocess:
         # return train_data, test_data
 
 class NeuralNet(Preprocess):
-    def __init__(self, training, test, time_step=5, epoch=10, pca_flag=False, batch=256, n_components=4):
+    def __init__(self, training, time_step=5, epoch=10, pca_flag=False, batch=256, n_components=4):
         self.training = training
-        self.test = test
         self.time_step = time_step
         self.epoch = epoch
         self.pca_flag = pca_flag
@@ -117,7 +116,7 @@ class NeuralNet(Preprocess):
         seq = Sequential()
         seq.add(Dense(units=64, input_dim=self.train_x.shape[1], activation='relu'))
         seq.add(Dense(units=32, activation='relu'))
-        seq.add(Dense(units=1, activation='linear_170'))
+        seq.add(Dense(units=1, activation='linear'))
         seq.compile(loss='mean_squared_error', optimizer='adam')
         return seq
 
@@ -139,22 +138,24 @@ class NeuralNet(Preprocess):
 
     def run_reg(self):
         self.train_x, _, self.train_y = self.preprocess(self.training, 0., time_step=self.time_step, num_feature=14, normalize=False)
-        self.test_x, _, self.test_y = self.preprocess(self.test, 0., time_step=self.time_step, num_feature=14, normalize=False)
         if self.pca_flag:
             self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
 
-        scaler = MinMaxScaler()
-        self.train_x = scaler.fit_transform(self.train_x)
-        self.test_x = scaler.transform(self.test_x)
+        self.scaler = MinMaxScaler()
+        self.train_x = self.scaler.fit_transform(self.train_x)
+
 
         self.nn = KerasRegressor(build_fn=self.create_reg_model, epochs=self.epoch, batch_size=self.batch,
                 validation_split=0.05, shuffle=True, verbose=2)
         self.nn.fit(self.train_x, self.train_y['Y_M_1'])
 
-    def predict_reg(self):
+    def predict_reg(self, test):
+        self.test_x, _, self.test_y = self.preprocess(test, 0., time_step=self.time_step, num_feature=14,
+                                                      normalize=False)
+        self.test_x = self.scaler.transform(self.test_x)
         y_pred = self.nn.predict(self.test_x)
-        r2 = r2_score(self.test_y.Y_M_1, y_pred)
-        print(f'R-square is {r2}')
+        r2 = r2_score(self.test_y.Y_M_1, self.scaler.inverse_transform(y_pred))
+        # print(f'R-square is {r2}')
         # print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
         return r2
 
@@ -202,29 +203,54 @@ if __name__ == '__main__':
     """
     Preprocess dataframe and reshape the data fed into neural networks
     """
-    # train_path = 'data/training/0050/'
-    # test_path = 'data/test/0050/'
-    # record = []
-    # files = os.listdir(train_path)
-    # for train_file in files:
-    #     if train_file[-3:] == 'csv':
-    #         train = pd.read_csv(train_path+train_file, index_col=0)
-    #         idx = train_file.split('_')[1].split('.')[0]
-    #         test = pd.read_csv(test_path+f'test_{idx}.csv', index_col=0)
-    #         # nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
-    #         # nn.run_cls()
-    #         # nn.predict_cls()
-    #
-    #         epoch = 50
-    #         batch = 128
-    #         pca_flag = False
-    #
-    #         nn = NeuralNet(training=train, test=test, time_step=1, epoch=epoch,  batch=batch, pca_flag=pca_flag, n_components=.95)
-    #         nn.run_reg()
-    #         r2 = nn.predict_reg()
-    #         record.append([test.date[0], r2])
-    # record = pd.DataFrame(record, columns=['date', 'r2'])
-    # record.to_csv(f'nn_reg_epoch-{epoch}_bactch-{batch}_pca-{pca_flag}.csv', index=False)
+    files = os.listdir('data/')
+    files = [file for file in files if os.path.isfile('data/'+file)]
+    files = [(file, int(file.split('.')[0].split('_')[1])) for file in files if file.split('.')[1] == 'csv' ]
+    sort_files = sorted(files, key=lambda x:x[1])
+    sort_files = [file for file in sort_files if file[1] != 2412]
+
+    for file, ticker in sort_files:
+        print(f'Doing - {ticker}')
+        df = pd.read_csv('data/'+file, index_col=0)
+        df['date_label'] = df.groupby(['date']).ngroup()
+        n_components = 1
+
+        train_end = 170
+        train_start = 0
+
+        train_data = df.loc[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
+        train_data.drop('date_label', axis=1, inplace=True)
+
+        epoch = 20
+        batch = 128
+        pca_flag = False
+
+        nn = NeuralNet(training=train_data, time_step=1, epoch=epoch, batch=batch, pca_flag=pca_flag,
+                       n_components=.95)
+        nn.run_reg()
+        record = []
+        for test_end in range(171, df['date_label'].shape[0] - 1):
+            if os.path.exists(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{idx}.csv'):
+                continue
+
+            test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > test_end - 1)]
+            test_data.drop('date_label', axis=1, inplace=True)
+            r2 = nn.predict_reg(test_data)
+            record.append([test_data.date[0], r2])
+        record = pd.DataFrame(record, columns=['date', 'r2'])
+        record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
+        record.sort_index(inplace=True)
+        # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
+        try:
+            record.to_csv(f'result/nn/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+        except:
+            os.mkdir(f'result/nn/linear_no_pca_{ticker}/')
+            record.to_csv(f'result/nn/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+
+        # nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
+        # nn.run_cls()
+        # nn.predict_cls()
+
 
     """
     1.Preprocess dataframe regarding to different time scale
@@ -255,55 +281,58 @@ if __name__ == '__main__':
         # record.to_csv(f'result/linear_20/linear_reg.csv', index=False)
 
     # TRAIN_DURATION = 170
-
-    files = os.listdir('data/')
-    files = [file for file in files if os.path.isfile('data/'+file)]
-    files = [(file, int(file.split('.')[0].split('_')[1])) for file in files if file.split('.')[1] == 'csv' ]
-    sort_files = sorted(files, key=lambda x:x[1])
-    sort_files = [file for file in sort_files[1:] if file[1] != 2412]
-
-    for file, ticker in sort_files:
-        print(f'Doing - {ticker}')
-        df = pd.read_csv('data/'+file, index_col=0)
-        df['date_label'] = df.groupby(['date']).ngroup()
-        n_components = 1
-
-        def mp_reg(epoch):
-            print(f'Epoch - {epoch}')
-            train_start = 170 + epoch - TRAIN_DURATION # 0
-            train_end = 170 + epoch  - 1  # 179
-
-            test_end = 170 + epoch  # 180
-
-            train_data = df.loc[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
-            train_data.drop('date_label', axis=1, inplace=True)
-
-            test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > train_end)]
-            test_data.drop('date_label', axis=1, inplace=True)
-
-            reg = Regressor(train_data=train_data, test_data=test_data, pca_flag=False, n_components=n_components)
-            r2 = reg.run_regr()
-            return test_data.date[0], r2
-
-        for idx in range(5, 171, 5):
-            if os.path.exists(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{idx}.csv'):
-                continue
-
-            TRAIN_DURATION = idx
-
-            pool = mp.Pool(mp.cpu_count())
-            record = pool.map(mp_reg, range(0, df.date_label[-1]-170))
-            pool.close()
-
-            record = pd.DataFrame(record, columns=['date', 'r2'])
-            record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
-            record.sort_index(inplace=True)
-            # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
-            try:
-                record.to_csv(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
-            except:
-                os.mkdir(f'result/last_15/linear_no_pca_{ticker}/')
-                record.to_csv(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+    """
+    1.Preprocess dataframe regarding to different time scale
+    2.Build the regression model for top 50 stocks
+    """
+    # files = os.listdir('data/')
+    # files = [file for file in files if os.path.isfile('data/'+file)]
+    # files = [(file, int(file.split('.')[0].split('_')[1])) for file in files if file.split('.')[1] == 'csv' ]
+    # sort_files = sorted(files, key=lambda x:x[1])
+    # sort_files = [file for file in sort_files[1:] if file[1] != 2412]
+    #
+    # for file, ticker in sort_files:
+    #     print(f'Doing - {ticker}')
+    #     df = pd.read_csv('data/'+file, index_col=0)
+    #     df['date_label'] = df.groupby(['date']).ngroup()
+    #     n_components = 1
+    #
+    #     def mp_reg(epoch):
+    #         print(f'Epoch - {epoch}')
+    #         train_start = 170 + epoch - TRAIN_DURATION # 0
+    #         train_end = 170 + epoch  - 1  # 179
+    #
+    #         test_end = 170 + epoch  # 180
+    #
+    #         train_data = df.loc[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
+    #         train_data.drop('date_label', axis=1, inplace=True)
+    #
+    #         test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > train_end)]
+    #         test_data.drop('date_label', axis=1, inplace=True)
+    #
+    #         reg = Regressor(train_data=train_data, test_data=test_data, pca_flag=False, n_components=n_components)
+    #         r2 = reg.run_regr()
+    #         return test_data.date[0], r2
+    #
+    #     for idx in range(5, 171, 5):
+    #         if os.path.exists(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{idx}.csv'):
+    #             continue
+    #
+    #         TRAIN_DURATION = idx
+    #
+    #         pool = mp.Pool(mp.cpu_count())
+    #         record = pool.map(mp_reg, range(0, df.date_label[-1]-170))
+    #         pool.close()
+    #
+    #         record = pd.DataFrame(record, columns=['date', 'r2'])
+    #         record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
+    #         record.sort_index(inplace=True)
+    #         # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
+    #         try:
+    #             record.to_csv(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+    #         except:
+    #             os.mkdir(f'result/last_15/linear_no_pca_{ticker}/')
+    #             record.to_csv(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
 
 
 
