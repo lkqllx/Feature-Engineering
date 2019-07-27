@@ -50,7 +50,7 @@ def timer(func):
 
 
 class Preprocess:
-    def preprocess(self, df: pd.DataFrame, threshold: float = 0.0001, time_step=5, num_feature=8, normalize=True) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+    def preprocess(self, df: pd.DataFrame, threshold: float = 0.0001, time_step=5, num_feature=8, normalize=False) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         label = pd.DataFrame(index=df.index)
         if 'date_str' in df.columns:
             df.drop('date_str', axis=1, inplace=True)
@@ -69,7 +69,7 @@ class Preprocess:
 
         "Create a new feature - LOB imbalance"
         df['imbalance'] = df['SP1'].values * df['SV1'].values - df['BV1'].values * df['BP1'].values
-        df['imbalance'] = (df['imbalance'] - df['imbalance'].mean()) / (df['imbalance'].max() - df['imbalance'].min())
+        df['imbalance'] = (df['imbalance'] - df['imbalance'].min()) / (df['imbalance'].max() - df['imbalance'].min())
 
 
         y_reg = df.iloc[:, 2:7]
@@ -141,8 +141,16 @@ class NeuralNet(Preprocess):
         if self.pca_flag:
             self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
 
-        self.scaler = MinMaxScaler()
-        self.train_x = self.scaler.fit_transform(self.train_x)
+        def min_max_scale(X, range=(0, 1)):
+            mi, ma = range
+            self.min = X.min()
+            self.max = X.max()
+            X_std = (X - X.min()) / (X.max() - X.min())
+            X_scaled = X_std * (ma - mi) + mi
+            return X_scaled
+
+
+        self.train_x = min_max_scale(self.train_x)
 
 
         self.nn = KerasRegressor(build_fn=self.create_reg_model, epochs=self.epoch, batch_size=self.batch,
@@ -152,10 +160,10 @@ class NeuralNet(Preprocess):
     def predict_reg(self, test):
         self.test_x, _, self.test_y = self.preprocess(test, 0., time_step=self.time_step, num_feature=14,
                                                       normalize=False)
-        self.test_x = self.scaler.transform(self.test_x)
+        self.test_x = (self.test_x - self.min) / (self.max - self.min)
         y_pred = self.nn.predict(self.test_x)
-        r2 = r2_score(self.test_y.Y_M_1, self.scaler.inverse_transform(y_pred))
-        # print(f'R-square is {r2}')
+        r2 = r2_score(self.test_y.Y_M_1, y_pred.reshape(-1,1))
+        print(f'R-square is {r2}')
         # print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
         return r2
 
@@ -230,11 +238,16 @@ if __name__ == '__main__':
         nn.run_reg()
         record = []
         for test_end in range(171, df['date_label'].shape[0] - 1):
-            if os.path.exists(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{idx}.csv'):
-                continue
 
             test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > test_end - 1)]
             test_data.drop('date_label', axis=1, inplace=True)
+
+            try:
+                if os.path.exists(f'result/nn/nn_no_pca_{ticker}/linear_reg_{test_data[0]}.csv'):
+                    continue
+            except:
+                pass
+
             r2 = nn.predict_reg(test_data)
             record.append([test_data.date[0], r2])
         record = pd.DataFrame(record, columns=['date', 'r2'])
@@ -242,10 +255,10 @@ if __name__ == '__main__':
         record.sort_index(inplace=True)
         # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
         try:
-            record.to_csv(f'result/nn/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+            record.to_csv(f'result/nn/nn_no_pca_{ticker}/nn_reg_{test_data[0]}.csv', index=False)
         except:
-            os.mkdir(f'result/nn/linear_no_pca_{ticker}/')
-            record.to_csv(f'result/nn/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+            os.mkdir(f'result/nn/nn_no_pca_{ticker}/')
+            record.to_csv(f'result/nn/nn_no_pca_{ticker}/nn_reg_{test_data[0]}.csv', index=False)
 
         # nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
         # nn.run_cls()
