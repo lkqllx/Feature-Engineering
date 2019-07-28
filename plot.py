@@ -967,6 +967,7 @@ if __name__ == '__main__':
             continue
     average_df.dropna(axis=1, inplace=True)
     average_df = average_df.astype(float)
+    average_df.to_csv('mean.csv', index=False)
     mean_plot = plot_42_y(average_df, 'Average r-square')
 
     Page().add(*[mean_plot]).render(path='2019-07-27.html')

@@ -79,7 +79,7 @@ class Preprocess:
                 possible_reshape_row = idx
                 break
 
-        return df[possible_reshape_row:], label[possible_reshape_row::time_step], y_reg[possible_reshape_row::time_step]
+        return df[possible_reshape_row::time_step], label[possible_reshape_row::time_step], y_reg[possible_reshape_row::time_step]
 
     def pca(self, train_data, test_data, n_components=0.95):
         # scaler = StandardScaler().fit(X=train_data, )
@@ -114,9 +114,9 @@ class NeuralNet(Preprocess):
 
     def create_reg_model(self, ) -> Sequential:
         seq = Sequential()
-        seq.add(Dense(units=64, input_dim=self.train_x.shape[1], activation='relu'))
+        seq.add(Dense(units=128, input_dim=self.train_x.shape[1], activation='relu'))
         seq.add(Dense(units=32, activation='relu'))
-        seq.add(Dense(units=1, activation='linear'))
+        seq.add(Dense(units=1))
         seq.compile(loss='mean_squared_error', optimizer='adam')
         return seq
 
@@ -162,7 +162,11 @@ class NeuralNet(Preprocess):
                                                       normalize=False)
         self.test_x = (self.test_x - self.min) / (self.max - self.min)
         y_pred = self.nn.predict(self.test_x)
-        r2 = r2_score(self.test_y.Y_M_1, y_pred.reshape(-1,1))
+        try:
+            r2 = r2_score(self.test_y.Y_M_1, y_pred.reshape(-1,1))
+        except:
+            r2 = 0
+            print('Something wrong')
         print(f'R-square is {r2}')
         # print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
         return r2
@@ -230,23 +234,23 @@ if __name__ == '__main__':
         train_data.drop('date_label', axis=1, inplace=True)
 
         epoch = 20
-        batch = 128
+        batch = 64
         pca_flag = False
 
-        nn = NeuralNet(training=train_data, time_step=1, epoch=epoch, batch=batch, pca_flag=pca_flag,
+        nn = NeuralNet(training=train_data, time_step=2, epoch=epoch, batch=batch, pca_flag=pca_flag,
                        n_components=.95)
         nn.run_reg()
         record = []
-        for test_end in range(171, df['date_label'].shape[0] - 1):
+        for test_end in range(171, df['date_label'][-1] + 1):
 
             test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > test_end - 1)]
             test_data.drop('date_label', axis=1, inplace=True)
 
-            try:
-                if os.path.exists(f'result/nn/nn_no_pca_{ticker}/linear_reg_{test_data[0]}.csv'):
-                    continue
-            except:
-                pass
+            # try:
+            #     if os.path.exists(f'result/nn/nn_reg_{ticker}.csv'):
+            #         continue
+            # except:
+            #     pass
 
             r2 = nn.predict_reg(test_data)
             record.append([test_data.date[0], r2])
@@ -255,10 +259,10 @@ if __name__ == '__main__':
         record.sort_index(inplace=True)
         # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
         try:
-            record.to_csv(f'result/nn/nn_no_pca_{ticker}/nn_reg_{test_data[0]}.csv', index=False)
+            record.to_csv(f'result/nn/nn_reg_{ticker}.csv', index=False)
         except:
             os.mkdir(f'result/nn/nn_no_pca_{ticker}/')
-            record.to_csv(f'result/nn/nn_no_pca_{ticker}/nn_reg_{test_data[0]}.csv', index=False)
+            record.to_csv(f'result/nn/nn_reg_{ticker}.csv', index=False)
 
         # nn = NeuralNet(training=train, test=test, time_step=30, epoch=1)
         # nn.run_cls()
