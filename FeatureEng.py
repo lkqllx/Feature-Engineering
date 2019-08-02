@@ -18,6 +18,7 @@ from keras.layers.normalization import BatchNormalization
 from tensorflow.python.keras.wrappers.scikit_learn import KerasRegressor
 from keras.layers.recurrent import LSTM
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import Lasso
 import os
 import h5py
 import datetime as dt
@@ -220,6 +221,20 @@ class Regressor(Preprocess):
         # print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
         return r2_score(self.test_y.Y_M_1, y_pred)
 
+    def run_lasso_regr(self):
+        if self.pca_flag == True:
+            self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
+        regr = Lasso(alpha=0.2)
+        regr.fit(self.train_x, self.train_y['Y_M_1'])
+        # print(regr.summary())
+        try:
+            y_pred = regr.predict(self.test_x, self.test_y.Y_M_1)
+        except Exception as e:
+            print(e)
+            return None
+        # print(f'R-square is {r2_score(self.test_y.Y_M_1, y_pred)}')
+        # print(f'Mean - y_pred {np.mean(y_pred)}, Mean - y {np.mean(self.test_y.Y_M_1)}')
+        return r2_score(self.test_y.Y_M_1, y_pred)
 if __name__ == '__main__':
     # comp_BM(file='data/step1_1101.csv')
     # concat_data()
@@ -371,7 +386,60 @@ if __name__ == '__main__':
 
     """
     1.Preprocess dataframe regarding to different time scale
-    2.Build the regression model for top 50 stocks
+    2.Build the GBRT regression model for top 50 stocks
+    """
+    # files = os.listdir('data/')
+    # files = [file for file in files if os.path.isfile('data/'+file)]
+    # files = [(file, int(file.split('.')[0].split('_')[1])) for file in files if file.split('.')[1] == 'csv' ]
+    # sort_files = sorted(files, key=lambda x:x[1])
+    # sort_files = [file for file in sort_files[1:] if file[1] != 2412]
+    #
+    # for file, ticker in sort_files:
+    #     print(f'Doing - {ticker}')
+    #     df = pd.read_csv('data/'+file, index_col=0)
+    #     df['date_label'] = df.groupby(['date']).ngroup()
+    #     n_components = 1
+    #
+    #     def mp_reg(epoch):
+    #         print(f'Epoch - {epoch}')
+    #         train_start = 170 + epoch - TRAIN_DURATION # 0
+    #         train_end = 170 + epoch  - 1  # 179
+    #
+    #         test_end = 170 + epoch  # 180
+    #
+    #         train_data = df.loc[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
+    #         train_data.drop('date_label', axis=1, inplace=True)
+    #
+    #         test_data = df.loc[(df['date_label'] <= test_end) & (df['date_label'] > train_end)]
+    #         test_data.drop('date_label', axis=1, inplace=True)
+    #
+    #         reg = Regressor(train_data=train_data, test_data=test_data, pca_flag=False, n_components=n_components)
+    #         r2 = reg.run_gbrt_regr()
+    #         return test_data.date[0], r2
+    #
+    #     for idx in range(5, 171, 5):
+    #         if os.path.exists(f'result/gbrt/gbrt_no_pca_{ticker}/gbrt_reg_{idx}.csv'):
+    #             continue
+    #
+    #         TRAIN_DURATION = idx
+    #
+    #         pool = mp.Pool(mp.cpu_count())
+    #         record = pool.map(mp_reg, range(0, df.date_label[-1]-170))
+    #         pool.close()
+    #
+    #         record = pd.DataFrame(record, columns=['date', 'r2'])
+    #         record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
+    #         record.sort_index(inplace=True)
+    #         # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
+    #         try:
+    #             record.to_csv(f'result/gbrt/gbrt_no_pca_{ticker}/gbrt_reg_{TRAIN_DURATION}.csv', index=False)
+    #         except:
+    #             os.mkdir(f'result/gbrt/gbrt_no_pca_{ticker}/')
+    #             record.to_csv(f'result/gbrt/gbrt_no_pca_{ticker}/gbrt_reg_{TRAIN_DURATION}.csv', index=False)
+
+    """
+    1.Preprocess dataframe regarding to different time scale
+    2.Build the Lasso regression model for top 50 stocks
     """
     files = os.listdir('data/')
     files = [file for file in files if os.path.isfile('data/'+file)]
@@ -399,11 +467,11 @@ if __name__ == '__main__':
             test_data.drop('date_label', axis=1, inplace=True)
 
             reg = Regressor(train_data=train_data, test_data=test_data, pca_flag=False, n_components=n_components)
-            r2 = reg.run_regr()
+            r2 = reg.run_lasso_regr()
             return test_data.date[0], r2
 
         for idx in range(5, 171, 5):
-            if os.path.exists(f'result/gbrt/gbrt_no_pca_{ticker}/gbrt_reg_{idx}.csv'):
+            if os.path.exists(f'result/lasso/lasso_no_pca_{ticker}/lasso_reg_{idx}.csv'):
                 continue
 
             TRAIN_DURATION = idx
@@ -417,12 +485,9 @@ if __name__ == '__main__':
             record.sort_index(inplace=True)
             # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
             try:
-                record.to_csv(f'result/gbrt/gbrt_no_pca_{ticker}/gbrt_reg_{TRAIN_DURATION}.csv', index=False)
+                record.to_csv(f'result/lasso/lasso_no_pca_{ticker}/lasso_reg_{TRAIN_DURATION}.csv', index=False)
             except:
-                os.mkdir(f'result/gbrt/gbrt_no_pca_{ticker}/')
-                record.to_csv(f'result/gbrt/gbrt_no_pca_{ticker}/gbrt_reg_{TRAIN_DURATION}.csv', index=False)
-
-
-
+                os.mkdir(f'result/lasso/lasso_no_pca_{ticker}/')
+                record.to_csv(f'result/lasso/lasso_no_pca_{ticker}/lasso_reg_{TRAIN_DURATION}.csv', index=False)
 
 
