@@ -18,7 +18,7 @@ from keras.layers.normalization import BatchNormalization
 from tensorflow.python.keras.wrappers.scikit_learn import KerasRegressor
 from keras.layers.recurrent import LSTM
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import Lasso, Ridge
 import os
 import h5py
 import datetime as dt
@@ -209,11 +209,11 @@ class Regressor(Preprocess):
     def run_gbrt_regr(self):
         if self.pca_flag == True:
             self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
-        regr = GradientBoostingRegressor(n_estimators=8000, max_depth=1, loss = 'ls', learning_rate = .01)
+        regr = GradientBoostingRegressor(n_estimators=800, max_depth=1, loss = 'ls', learning_rate = .01)
         regr.fit(self.train_x, self.train_y['Y_M_1'])
         # print(regr.summary())
         try:
-            y_pred = regr.predict(self.test_x, self.test_y.Y_M_1)
+            y_pred = regr.predict(self.test_x)
         except Exception as e:
             print(e)
             return None
@@ -224,11 +224,11 @@ class Regressor(Preprocess):
     def run_lasso_regr(self):
         if self.pca_flag == True:
             self.train_x, self.test_x = self.pca(self.train_x, self.test_x, n_components=self.n_components)
-        regr = Lasso(alpha=0.2)
+        regr = Ridge()
         regr.fit(self.train_x, self.train_y['Y_M_1'])
         # print(regr.summary())
         try:
-            y_pred = regr.predict(self.test_x, self.test_y.Y_M_1)
+            y_pred = regr.predict(self.test_x)
         except Exception as e:
             print(e)
             return None
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     # files = [file for file in files if os.path.isfile('data/'+file)]
     # files = [(file, int(file.split('.')[0].split('_')[1])) for file in files if file.split('.')[1] == 'csv' ]
     # sort_files = sorted(files, key=lambda x:x[1])
-    # sort_files = [file for file in sort_files[1:] if file[1] != 2412]
+    # sort_files = [('step1_0050.csv', '0050')] + [file for file in sort_files[1:] if file[1] != 2412]
     #
     # for file, ticker in sort_files:
     #     print(f'Doing - {ticker}')
@@ -417,7 +417,7 @@ if __name__ == '__main__':
     #         r2 = reg.run_gbrt_regr()
     #         return test_data.date[0], r2
     #
-    #     for idx in range(5, 171, 5):
+    #     for idx in [20, 10]:
     #         if os.path.exists(f'result/gbrt/gbrt_no_pca_{ticker}/gbrt_reg_{idx}.csv'):
     #             continue
     #
@@ -445,7 +445,7 @@ if __name__ == '__main__':
     files = [file for file in files if os.path.isfile('data/'+file)]
     files = [(file, int(file.split('.')[0].split('_')[1])) for file in files if file.split('.')[1] == 'csv' ]
     sort_files = sorted(files, key=lambda x:x[1])
-    sort_files = [file for file in sort_files[1:] if file[1] != 2412]
+    sort_files = [('step1_0050.csv', '0050')] + [file for file in sort_files[1:] if file[1] != 2412]
 
     for file, ticker in sort_files:
         print(f'Doing - {ticker}')
@@ -470,8 +470,8 @@ if __name__ == '__main__':
             r2 = reg.run_lasso_regr()
             return test_data.date[0], r2
 
-        for idx in range(5, 171, 5):
-            if os.path.exists(f'result/lasso/lasso_no_pca_{ticker}/lasso_reg_{idx}.csv'):
+        for idx in range(5, 171, 15):
+            if os.path.exists(f'result/ridge/ridge_no_pca_{ticker}/ridge_reg_{idx}.csv'):
                 continue
 
             TRAIN_DURATION = idx
@@ -485,9 +485,9 @@ if __name__ == '__main__':
             record.sort_index(inplace=True)
             # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
             try:
-                record.to_csv(f'result/lasso/lasso_no_pca_{ticker}/lasso_reg_{TRAIN_DURATION}.csv', index=False)
+                record.to_csv(f'result/ridge/ridge_no_pca_{ticker}/ridge_reg_{TRAIN_DURATION}.csv', index=False)
             except:
-                os.mkdir(f'result/lasso/lasso_no_pca_{ticker}/')
-                record.to_csv(f'result/lasso/lasso_no_pca_{ticker}/lasso_reg_{TRAIN_DURATION}.csv', index=False)
+                os.mkdir(f'result/ridge/ridge_no_pca_{ticker}/')
+                record.to_csv(f'result/ridge/ridge_no_pca_{ticker}/ridge_reg_{TRAIN_DURATION}.csv', index=False)
 
 
