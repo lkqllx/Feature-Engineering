@@ -364,7 +364,7 @@ if __name__ == '__main__':
     #         return test_data.date[0], r2
     #
     #     for idx in range(5, 171, 5):
-    #         if os.path.exists(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{idx}.csv'):
+    #         if os.path.exists(f'result/linear/linear_no_pca_{ticker}/linear_reg_{idx}.csv'):
     #             continue
     #
     #         TRAIN_DURATION = idx
@@ -378,10 +378,10 @@ if __name__ == '__main__':
     #         record.sort_index(inplace=True)
     #         # record.to_csv(f'result/linear_20//linear_reg_pca-{n_components}_without_norm.csv', index=False)
     #         try:
-    #             record.to_csv(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+    #             record.to_csv(f'result/linear/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
     #         except:
-    #             os.mkdir(f'result/last_15/linear_no_pca_{ticker}/')
-    #             record.to_csv(f'result/last_15/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+    #             os.mkdir(f'result/linear/linear_no_pca_{ticker}/')
+    #             record.to_csv(f'result/linear/linear_no_pca_{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
 
 
     """

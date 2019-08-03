@@ -923,24 +923,72 @@ if __name__ == '__main__':
 
 
     '''
+    # ----------------------------------------------------------------------------------------------------------
+    # PLOT OF DIFFERENT STOCKS - 2019-07-26
+    # ----------------------------------------------------------------------------------------------------------
+    # '''
+    # dirs = os.listdir('result/linear/')
+    # dirs = [dir for dir in dirs if dir != '.DS_Store']
+    # check_sum = reduce(lambda x,y:x+y, range(5,171,5))
+    # for dir in dirs:
+    #     ticker = dir.split('_')[-1]
+    #     curr_dir = 'result/linear/' + dir + '/'
+    #     files = os.listdir(curr_dir)
+    #     files = [file for file in files if file != '.DS_Store']
+    #     sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
+    #     sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
+    #     sum_file = reduce(lambda x,y:x+y, [int(training_time) for _, training_time in sort_files])
+    #     if sum_file != check_sum:
+    #         print(f'Skip {ticker}')
+    #         continue
+    #     for file, training_period in sort_files:
+    #         curr_df = pd.read_csv(curr_dir+file, index_col=0)
+    #         curr_df.columns = [training_period]
+    #         try:
+    #             output = pd.concat([output, curr_df], axis=1, sort=True)
+    #         except:
+    #             output = curr_df
+    #     output.dropna(inplace=True)
+    #     output = output.round(2)
+    #     output_mean = output.mean().round(3)
+    #
+    #     try:
+    #         try:
+    #             average_df = pd.concat(
+    #                 [average_df, pd.DataFrame(output_mean.values.tolist(), columns=['{}'.format(ticker)])], axis=1)
+    #         except NameError:
+    #             average_df = pd.DataFrame(output.columns.values.tolist(), columns=['Training Period'])
+    #             average_df = pd.concat(
+    #                 [average_df, pd.DataFrame(output_mean.values.tolist(), columns=['{}'.format(ticker)])], axis=1)
+    #         del output
+    #
+    #     except:
+    #         print(f'Skip {ticker}')
+    #         continue
+    # average_df.dropna(axis=1, inplace=True)
+    # average_df = average_df.astype(float)
+    # average_df.to_csv('mean.csv', index=False)
+    # mean_plot = plot_42_y(average_df, 'Average r-square')
+    #
+    # Page().add(*[mean_plot]).render(path='2019-07-27.html')
+
+    '''
     ----------------------------------------------------------------------------------------------------------
-    PLOT OF DIFFERENT STOCKS - 2019-07-26
+    PLOT OF DIFFERENT STOCKS - 2019-08-03
     ----------------------------------------------------------------------------------------------------------
     '''
-    dirs = os.listdir('result/top50/')
+    dirs = os.listdir('result/Tvalues/')
     dirs = [dir for dir in dirs if dir != '.DS_Store']
-    check_sum = reduce(lambda x,y:x+y, range(5,171,5))
+    # check_sum = reduce(lambda x,y:x+y, range(5,171,5))
     for dir in dirs:
         ticker = dir.split('_')[-1]
-        curr_dir = 'result/top50/' + dir + '/'
+        curr_dir = 'result/Tvalues/' + dir + '/'
         files = os.listdir(curr_dir)
         files = [file for file in files if file != '.DS_Store']
         sort_files = {file:file.split('.')[0].split('_')[2] for file in files}
         sort_files = sorted(sort_files.items(), key=lambda x: int(x[1]))
         sum_file = reduce(lambda x,y:x+y, [int(training_time) for _, training_time in sort_files])
-        if sum_file != check_sum:
-            print(f'Skip {ticker}')
-            continue
+
         for file, training_period in sort_files:
             curr_df = pd.read_csv(curr_dir+file, index_col=0)
             curr_df.columns = [training_period]
@@ -970,4 +1018,4 @@ if __name__ == '__main__':
     average_df.to_csv('mean.csv', index=False)
     mean_plot = plot_42_y(average_df, 'Average r-square')
 
-    Page().add(*[mean_plot]).render(path='2019-07-27.html')
+    Page().add(*[mean_plot]).render(path='2019-08-03.html')
