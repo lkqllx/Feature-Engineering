@@ -33,7 +33,7 @@ def plot_corr(df, corr_mat, filename='original_features_corr.png'):
     cb.ax.tick_params(labelsize=14)
     plt.title('Correlation Matrix', fontsize=16)
     # plt.show()
-    # plt.savefig(fname=filename, dpi=900)
+    plt.savefig(fname=filename, dpi=900)
 
 def run_regr(train, test):
 
@@ -52,51 +52,51 @@ if __name__ == '__main__':
     df = pd.read_csv('data/step1_0050.csv', index_col=0)
     ticker = '0050'
     added_features = create_feature(df.iloc[:,14:])
-    df = pd.concat([df, added_features], axis=1).dropna()
-    df['date_label'] = df.groupby(['date']).ngroup()
-
-    def mp_reg(epoch):
-        print(f'Epoch - {epoch}')
-        train_start = 170 + epoch - TRAIN_DURATION # 0
-        train_end = 170 + epoch  - 1  # 179
-
-        test_end = 170 + epoch  # 180
-
-        train_data = df[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
-        train_data.drop('date_label', axis=1, inplace=True)
-
-        test_data = df[(df['date_label'] <= test_end) & (df['date_label'] > train_end)]
-        test_data.drop('date_label', axis=1, inplace=True)
-
-        r2, tvalues = run_regr(train=train_data, test=test_data)
-
-        try:
-            tvalues.to_csv(f'result/Tvalues/{ticker}/Tvalue_reg_{test_data.date[0]}.csv', index=True)
-        except:
-            os.mkdir(f'result/Tvalues/{ticker}')
-            tvalues.to_csv(f'result/Tvalues/{ticker}/Tvalue_reg_{test_data.date[0]}.csv', index=True)
-
-        return test_data.date[0], r2,
-
-    # for idx in range(5, 171, 5):
-    for idx in [170]:
-        # if os.path.exists(f'result/Tvalues/{ticker}/linear_reg_{idx}.csv'):
-        #     continue
-
-        TRAIN_DURATION = idx
-
-        pool = mp.Pool(mp.cpu_count())
-        record = pool.map(mp_reg, range(0, df.date_label[-1]-170))
-        pool.close()
-
-        record = pd.DataFrame(record, columns=['date', 'r2'])
-        record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
-        record.sort_index(inplace=True)
-
-        try:
-            record.to_csv(f'result/Tvalues/{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
-        except:
-            os.mkdir(f'result/Tvalues/{ticker}')
-            record.to_csv(f'result/Tvalues/{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+    # df = pd.concat([df, added_features], axis=1).dropna()
+    # df['date_label'] = df.groupby(['date']).ngroup()
+    #
+    # def mp_reg(epoch):
+    #     print(f'Epoch - {epoch}')
+    #     train_start = 170 + epoch - TRAIN_DURATION # 0
+    #     train_end = 170 + epoch  - 1  # 179
+    #
+    #     test_end = 170 + epoch  # 180
+    #
+    #     train_data = df[(df['date_label'] <= train_end) & (df['date_label'] >= train_start)]
+    #     train_data.drop('date_label', axis=1, inplace=True)
+    #
+    #     test_data = df[(df['date_label'] <= test_end) & (df['date_label'] > train_end)]
+    #     test_data.drop('date_label', axis=1, inplace=True)
+    #
+    #     r2, tvalues = run_regr(train=train_data, test=test_data)
+    #
+    #     try:
+    #         tvalues.to_csv(f'result/Tvalues/{ticker}/Tvalue_reg_{test_data.date[0]}.csv', index=True)
+    #     except:
+    #         os.mkdir(f'result/Tvalues/{ticker}')
+    #         tvalues.to_csv(f'result/Tvalues/{ticker}/Tvalue_reg_{test_data.date[0]}.csv', index=True)
+    #
+    #     return test_data.date[0], r2,
+    #
+    # # for idx in range(5, 171, 5):
+    # for idx in [170]:
+    #     # if os.path.exists(f'result/Tvalues/{ticker}/linear_reg_{idx}.csv'):
+    #     #     continue
+    #
+    #     TRAIN_DURATION = idx
+    #
+    #     pool = mp.Pool(mp.cpu_count())
+    #     record = pool.map(mp_reg, range(0, df.date_label[-1]-170))
+    #     pool.close()
+    #
+    #     record = pd.DataFrame(record, columns=['date', 'r2'])
+    #     record.index = pd.to_datetime(record.date, format='%Y-%m-%d')
+    #     record.sort_index(inplace=True)
+    #
+    #     try:
+    #         record.to_csv(f'result/Tvalues/{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
+    #     except:
+    #         os.mkdir(f'result/Tvalues/{ticker}')
+    #         record.to_csv(f'result/Tvalues/{ticker}/linear_reg_{TRAIN_DURATION}.csv', index=False)
 
 
